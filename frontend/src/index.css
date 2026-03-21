@@ -3,19 +3,19 @@
 /* ── Custom Theme Tokens ── */
 @theme {
   --color-black: #000000;
-  --color-surface: #0A0A0A;
-  --color-surface-light: #141414;
-  --color-surface-card: #1A1A1A;
+  --color-surface: rgba(10, 10, 10, 0.6);
+  --color-surface-light: rgba(20, 20, 20, 0.8);
+  --color-surface-card: #0A0F1A;
   
-  --color-blue-main: #2563EB; /* Solid blue */
-  --color-blue-light: #3B82F6;
-  --color-blue-dark: #1D4ED8;
+  --color-blue-main: #2563EB; 
+  --color-blue-light: #60A5FA;
+  --color-blue-dark: #1E3A8A;
   
-  --color-text-primary: #3B82F6; /* Text simply blue */
-  --color-text-secondary: #60A5FA;
-  --color-text-muted: #93C5FD;
+  --color-text-primary: #F8FAFC; /* Replaced harsh blue with crisp off-white */
+  --color-text-secondary: #94A3B8; /* Slate-400 for secondary text */
+  --color-text-accent: #3B82F6; 
   
-  --color-border: #1E3A8A; /* Dark blue border */
+  --color-border: rgba(30, 58, 138, 0.4); 
   
   /* Status colors */
   --color-orange: #F59E0B;
@@ -32,8 +32,10 @@
 
 body {
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #000000;
-  color: #3B82F6;
+  /* Added a subtle radial gradient for depth instead of flat black */
+  background: radial-gradient(circle at 50% 0%, #0f172a 0%, #000000 70%);
+  background-attachment: fixed;
+  color: var(--color-text-primary);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -41,10 +43,10 @@ body {
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: #000000; }
 ::-webkit-scrollbar-thumb { background: #1E3A8A; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #2563EB; }
+::-webkit-scrollbar-thumb:hover { background: #3B82F6; }
 
 /* ── Animations ── */
 @keyframes fadeIn {
@@ -52,68 +54,60 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+.animate-fade-in { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
 
-/* ── Flat Card ── */
+/* ── Glass Card ── */
 .glass-card {
   background: var(--color-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  transition: all 0.2s ease;
+  border-radius: 16px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card-hover:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
   border-color: var(--color-blue-light);
   background: var(--color-surface-light);
+  box-shadow: 0 10px 40px rgba(37, 99, 235, 0.1);
 }
 
 /* ── Flat Buttons ── */
 .btn-primary {
   background: var(--color-blue-main);
-  color: #000000;
+  color: #ffffff;
   padding: 10px 24px;
   border-radius: 8px;
   font-weight: 600;
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
 }
 .btn-primary:hover {
-  background: var(--color-blue-light);
+  background: #3B82F6;
+  box-shadow: 0 0 25px rgba(37, 99, 235, 0.5);
+  transform: scale(1.02);
 }
 
 .btn-secondary {
-  background: transparent;
-  color: var(--color-blue-main);
+  background: rgba(37, 99, 235, 0.05);
+  color: var(--color-blue-light);
   padding: 10px 24px;
   border-radius: 8px;
   font-weight: 600;
-  border: 1px solid var(--color-blue-main);
+  border: 1px solid var(--color-border);
   cursor: pointer;
   transition: all 0.2s;
 }
 .btn-secondary:hover {
-  background: rgba(37, 99, 235, 0.1);
-  color: var(--color-blue-light);
+  background: rgba(37, 99, 235, 0.15);
   border-color: var(--color-blue-light);
-}
-
-.btn-success {
-  background: var(--color-green);
-  color: #000000;
-  padding: 10px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.btn-success:hover {
-  background: #059669;
 }
 
 /* ── Badges ── */
@@ -124,25 +118,24 @@ body {
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.02em;
 }
-.badge-error { background: rgba(239, 68, 68, 0.1); color: var(--color-red); border: 1px solid rgba(239, 68, 68, 0.3); }
-.badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--color-orange); border: 1px solid rgba(245, 158, 11, 0.3); }
-.badge-success { background: rgba(16, 185, 129, 0.1); color: var(--color-green); border: 1px solid rgba(16, 185, 129, 0.3); }
-.badge-info { background: rgba(59, 130, 246, 0.1); color: var(--color-blue-light); border: 1px solid rgba(59, 130, 246, 0.3); }
 
 /* ── Flat Drop Zone ── */
 .drop-zone {
-  border: 2px dashed var(--color-blue-dark);
-  background: var(--color-surface);
-  border-radius: 16px;
+  border: 2px dashed var(--color-border);
+  background: rgba(10, 15, 30, 0.5);
+  backdrop-filter: blur(8px);
+  border-radius: 20px;
   padding: 48px;
   text-align: center;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   cursor: pointer;
 }
 .drop-zone:hover, .drop-zone.active {
   border-color: var(--color-blue-light);
-  background: rgba(37, 99, 235, 0.05);
+  background: rgba(37, 99, 235, 0.08);
+  box-shadow: inset 0 0 20px rgba(37, 99, 235, 0.05);
 }
 
 /* ── Tree View ── */
