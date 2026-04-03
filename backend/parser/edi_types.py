@@ -116,6 +116,7 @@ class FixResponse(BaseModel):
     corrected_content: str = ""
     message: str = ""
     validation_result: Optional[ValidationResult] = None
+    parse_result: Optional[ParseResult] = None
 
 
 class ExportRequest(BaseModel):

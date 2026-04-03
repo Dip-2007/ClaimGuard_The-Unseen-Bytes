@@ -92,7 +92,23 @@ export default function App() {
         const data = await res.json();
         if (data.corrected_content) {
           setRawContent(data.corrected_content);
-          setParseData((prev) => (prev ? { ...prev, validation_result: data.validation_result } : prev));
+          setParseData((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  validation_result: data.validation_result,
+                  parse_result: data.parse_result || prev.parse_result,
+                }
+              : prev
+          );
+
+          const blob = new Blob([data.corrected_content], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `adjusted_${errorId}.edi`;
+          a.click();
+          URL.revokeObjectURL(url);
         }
       } catch (err) {
         console.error('Fix error:', err);
@@ -112,7 +128,23 @@ export default function App() {
       const data = await res.json();
       if (data.corrected_content) {
         setRawContent(data.corrected_content);
-        setParseData((prev) => (prev ? { ...prev, validation_result: data.validation_result } : prev));
+        setParseData((prev) =>
+          prev
+            ? {
+                ...prev,
+                validation_result: data.validation_result,
+                parse_result: data.parse_result || prev.parse_result,
+              }
+            : prev
+        );
+
+        const blob = new Blob([data.corrected_content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'fully_corrected.edi';
+        a.click();
+        URL.revokeObjectURL(url);
       }
     } catch (err) {
       console.error('Fix all error:', err);
@@ -309,6 +341,7 @@ export default function App() {
                 />
                 <ValidationPanel
                   validation={parseData.validation_result}
+                  rawContent={rawContent}
                   onFix={handleFix}
                   onFixAll={handleFixAll}
                 />

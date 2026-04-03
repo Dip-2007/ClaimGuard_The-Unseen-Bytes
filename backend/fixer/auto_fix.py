@@ -34,8 +34,8 @@ def apply_fix(
     if not target_error:
         return raw_content, f"Error ID '{error_id}' not found in validation results"
 
-    if not target_error.fixable:
-        return raw_content, f"Error '{error_id}' is not auto-fixable"
+    if not target_error.fixable and not fix_value:
+        return raw_content, f"Error '{error_id}' is not auto-fixable and no manual fix value was provided"
 
     # Apply the fix based on segment and element position
     corrected_segments = []

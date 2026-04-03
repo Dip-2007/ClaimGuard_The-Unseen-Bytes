@@ -86,9 +86,9 @@ async def chat_with_gemini(
     full_prompt = "\n\n".join(prompt_parts)
 
     try:
-        # Using gemini-2.5-pro as the more accurate model
+        # Using gemini-2.5-flash to avoid strict Free Tier rate limits
         response = client.models.generate_content(
-            model="gemini-2.5-pro",
+            model="gemini-2.5-flash",
             contents=full_prompt,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,

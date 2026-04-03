@@ -18,189 +18,37 @@ class Severity:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 1.  CODE SETS
+# 1.  DYNAMIC TR3 SCHEMA LOADING
 # ═══════════════════════════════════════════════════════════════════════════
 
-# ISA-05 / ISA-07  Interchange ID Qualifier
-ISA_ID_QUALIFIERS = {
-    "01","14","20","27","28","29","30","33","ZZ"
-}
+import json
+import os
 
-# GS-01  Functional Identifier Code  →  valid ST-01 codes
-GS_FUNCTIONAL_IDS = {
-    "FA": ["999","997"],    # Functional Acknowledgement
-    "HC": ["837"],          # Health Care Claim (Institutional)
-    "HP": ["837"],          # Health Care Claim (Professional)
-    "HR": ["835"],          # Health Care Claim Payment / Remittance
-    "BE": ["834"],          # Benefit Enrollment
-    "EN": ["834"],          # Benefit Enrollment (alt)
-    "HB": ["271"],          # Eligibility Response
-    "HS": ["270"],          # Eligibility Inquiry
-    "HN": ["277"],          # Health Care Claim Status
-}
+SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "tr3_schemas.json")
+try:
+    with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
+        _schemas = json.load(f)
+except Exception as e:
+    print(f"Warning: Failed to load tr3_schemas.json from {SCHEMA_PATH}: {e}")
+    _schemas = {}
 
-# GS-08  Version/Release codes  →  allowed transaction
-GS_VERSION_TX = {
-    "005010X222A1": "837P",
-    "005010X223A2": "837I",
-    "005010X221A1": "835",
-    "005010X220A1": "834",
-}
-
-# NM1-08  Entity Identifier Qualifier (subset used in healthcare)
-NM1_ID_CODE_QUALIFIERS = {
-    "EI","FI","MI","NI","PI","PP","SY","TJ","XX","ZZ",
-    "0B","1A","1B","1C","1D","1G","1H","1J","1K","1L","1W",
-    "28","29","B3","C5","GY","SL","TZ","UM","US","ZH",
-}
-
-# NM1-02  Entity Type Qualifier
-NM1_ENTITY_TYPE = {"1": "Person", "2": "Non-Person Entity"}
-
-# Complete HIPAA code set for NM1-08
-VALID_NM1_08 = {
-    "EI","FI","MI","NI","PI","PP","SY","TJ","XX","ZZ",
-    "0B","1A","1B","1C","1D","1G","1H","1J","1K","1L","1W",
-    "28","29","34","B3","C5","GY","SL","TZ","UM","US","ZH",
-    "2U","4N","6P","9A","9C","NF","SV","XV","FY","QD","QL",
-    "G2","LU","HJ","PXC","OB","PD","1X","3D","4A","4C","71",
-    "72","73","74","75","76","77","78","79","80","AF","AG",
-    "AH","AP","BE","BF","BI","BJ","BK","BL","BO","BS","DA",
-    "DD","DN","DP","DR","EA","EN","F3","FD","FE","FF","FH",
-    "FI","FJ","FL","FM","FN","FO","FQ","FR","FS","FX","GH",
-    "GI","GN","GP","GQ","GS","GU","GW","GX","GY","GZ","HC",
-    "IG","IL","IM","IN","J5","JA","JB","JC","JD","JE","JF",
-    "JG","JH","JI","JJ","JK","JL","JM","JN","JO","JP","JQ",
-    "JR","JS","JT","JU","JV","JW","JX","JY","JZ","K3","K4",
-    "K5","K6","K7","K8","K9","KA","KB","KC","KD","KE","KF",
-    "KG","KH","KI","KJ","KK","KL","KM","KN","KO","KP","KQ",
-    "KR","KS","KT","KU","KV","KW","KX","KY","KZ","L1","L2",
-    "L3","L4","L5","L6","L7","L8","L9","LA","LB","LC","LD",
-    "LE","LF","LG","LH","LI","LJ","LK","LL","LM","LN","LO",
-    "LP","LQ","LR","LS","LT","LU","LV","LW","LX","LY","LZ"
-}
-
-VALID_ISO_COUNTRIES = {
-    "US","CA","MX","GB","IN","AU","DE","FR",
-    "JP","CN","BR","ZA","SG","NZ","IE","IT","ES","NL","SE","NO",
-    "DK","FI","CH","AT","BE","PT","GR","PL","CZ","HU","RO","BG",
-    "HR","SK","SI","EE","LV","LT","CY","MT","LU","IS","LI","MC",
-    "SM","VA","AD","AL","BA","MK","ME","RS","XK","BY","UA","MD",
-    "RU","KZ","UZ","TM","TJ","KG","AZ","AM","GE","TR","IL","SA",
-    "AE","QA","KW","BH","OM","JO","LB","SY","IQ","IR","PK","BD",
-    "LK","NP","MM","TH","VN","KH","LA","MY","ID","PH","KR","TW",
-    "HK","MO","MN","AF","YE","EG","LY","TN","DZ","MA","SD","ET",
-    "KE","TZ","UG","RW","NG","GH","CI","SN","CM","AO","MZ","ZM",
-    "ZW","BW","NA","MG","MU","SC","AR","CL","CO","PE","VE","EC",
-    "BO","PY","UY","GY","SR","PA","CR","GT","HN","SV","NI","CU",
-    "DO","JM","TT","BB","BS","HT","PR","VG","VI","GU","AS","MP",
-    "USA"
-}
-
-# CLM-05  Place of Service codes (HIPAA / CMS)
-PLACE_OF_SERVICE_CODES = {
-    "01","02","03","04","05","06","07","08","09","10",
-    "11","12","13","14","15","16","17","18","19","20",
-    "21","22","23","24","25","26","27","28","29","30",
-    "31","32","33","34","35","36","37","38","39","40",
-    "41","42","49","50","51","52","53","54","55","56",
-    "57","58","60","61","62","65","71","72","99",
-}
-
-# CLM-05-3  Claim Frequency Type Code
-CLAIM_FREQUENCY_CODES = {
-    "1": "Original",
-    "2": "Interim – First Claim",
-    "3": "Interim – Continuing",
-    "4": "Interim – Last Claim",
-    "5": "Late Charge",
-    "6": "Adjustment",
-    "7": "Replacement",
-    "8": "Void/Cancel",
-    "9": "Final Claim for a Home Health PPS Episode",
-}
-
-# DTP-01  Date/Time Qualifier (commonly used subset)
-DTP_QUALIFIER_CODES = {
-    "007","010","036","050","096","102","291","304","314",
-    "348","349","360","361","369","405","431","435","438","439",
-    "440","441","444","445","446","453","454","455","461",
-    "463","471","472","484","573","582","593","607","102",
-    "336","009","011","014","023","032","035","043","044",
-    "045","047","112","113","114","115","119","125","126",
-    "127","128","129","133","13B","14A","150","152","193",
-    "203","204","208","224","225","226","230","231","232",
-    "233","236","238","241","242","245","248","258","260",
-    "264","266","267","281","282","286","289","290","294",
-    "295","296","297","299","303","311","318","339","340",
-    "341","342","343","350","370","382","771",
-}
-
-# REF-01  Reference Identification Qualifier (subset)
-REF_QUALIFIER_CODES = {
-    "0B","0K","1A","1B","1C","1D","1G","1H","1J","1K","1L",
-    "1W","28","2U","4N","6P","9A","9C","A4","AA","BB","BJ",
-    "CE","D3","D9","DN","EA","EI","EJ","E9","F4","F8","FJ",
-    "G1","G2","G3","G4","GJ","GS","HJ","IA","IK","J4","JD",
-    "LU","LX","MCI","N4","NT","OB","P4","PD","PQ","Q4","RB",
-    "SY","T4","TJ","UK","VX","Y4","ZH","ZY","ZZ",
-    "0F","02","03","04","05","06","07","08","09","11","21","22",
-    "23","24","2F","2H","3H","4R","55","57","77","F5","FY",
-    "QB","QD","QH","QL","RB","IG","SFH",
-    "EV","1S","38","4A","72","73","74","9F","AB","AV","AZ",
-    "B3","B4","BV","C1","DP","EM","GH","IL","LA","MR","N5",
-    "QA","QC","QE","QF","QG","SG","TX","UX","X4","XX",
-}
-
-# SBR-01  Payer Responsibility Sequence
-SBR_PAYER_RESPONSIBILITY = {
-    "A","B","C","D","E","F","G","H","P","S","T","U"
-}
-
-# INS-02  Individual Relationship Code (834)
-INS_RELATIONSHIP_CODES = {
-    "01":"Spouse","17":"Stepson or Stepdaughter","18":"Self",
-    "19":"Child","20":"Employee","21":"Unknown","22":"Handicapped Dependent",
-    "23":"Sponsored Dependent","24":"Dependent of a Minor Dependent",
-    "25":"Ex-Spouse","26":"Associated Party","29":"Significant Other",
-    "32":"Mother","33":"Father","36":"Emancipated Minor",
-    "39":"Organ Donor","40":"Cadaver Donor","41":"Injured Plaintiff",
-    "43":"Child Where Insured Has No Financial Responsibility",
-    "44":"Stepparent","46":"Foster Child","53":"Life Partner",
-    "G8":"Other Relationship",
-}
-
-# INS-03  Maintenance Type Code (834)
-INS_MAINTENANCE_TYPE = {
-    "001":"Change","002":"Delete","021":"Addition",
-    "024":"Cancellation or Termination","025":"Reinstatement",
-    "026":"Correction","030":"Audit or Compare",
-    "032":"Employee Status Change",
-}
-
-# CAS-01  Claim Adjustment Group Codes (835)
-CAS_GROUP_CODES = {
-    "CO":"Contractual Obligations",
-    "CR":"Correction and Reversals",
-    "OA":"Other Adjustments",
-    "PI":"Payer Initiated Reductions",
-    "PR":"Patient Responsibility",
-}
-
-# HD-03  Insurance Line Code (834)
-HD_INSURANCE_LINE = {
-    "AH","AK","AL","AM","AO","AP","AU","DI","DS","EP",
-    "FP","HE","HL","HM","HP","HS","HV","LT","LY","MA",
-    "MB","MC","MD","MH","MM","MO","MP","MS","OT","PE",
-    "PD","PL","PN","PP","PS","QA","QC","QD","QE","QF",
-    "QG","QH","QI","QJ","QK","QL","QM","QN","QO","QP",
-    "RA","RB","RC","RD","RE","RF","RG","RH","RI","RJ",
-    "SP","TY","VI","WC",
-    "HLT","DEN","VIS","DRUG","FAC","LTSS",
-    "COB","EAP","FSA","HRA","HSA","HMO","PPO","POS",
-    "EPO","IND","FAM","EMP",
-}
-
+# Convert parsed lists into sets for O(1) lookup performance
+ISA_ID_QUALIFIERS = set(_schemas.get("ISA_ID_QUALIFIERS", []))
+GS_FUNCTIONAL_IDS = _schemas.get("GS_FUNCTIONAL_IDS", {})
+GS_VERSION_TX = _schemas.get("GS_VERSION_TX", {})
+NM1_ID_CODE_QUALIFIERS = set(_schemas.get("NM1_ID_CODE_QUALIFIERS", []))
+NM1_ENTITY_TYPE = _schemas.get("NM1_ENTITY_TYPE", {})
+VALID_NM1_08 = set(_schemas.get("VALID_NM1_08", []))
+VALID_ISO_COUNTRIES = set(_schemas.get("VALID_ISO_COUNTRIES", []))
+PLACE_OF_SERVICE_CODES = set(_schemas.get("PLACE_OF_SERVICE_CODES", []))
+CLAIM_FREQUENCY_CODES = _schemas.get("CLAIM_FREQUENCY_CODES", {})
+DTP_QUALIFIER_CODES = set(_schemas.get("DTP_QUALIFIER_CODES", []))
+REF_QUALIFIER_CODES = set(_schemas.get("REF_QUALIFIER_CODES", []))
+SBR_PAYER_RESPONSIBILITY = set(_schemas.get("SBR_PAYER_RESPONSIBILITY", []))
+INS_RELATIONSHIP_CODES = _schemas.get("INS_RELATIONSHIP_CODES", {})
+INS_MAINTENANCE_TYPE = _schemas.get("INS_MAINTENANCE_TYPE", {})
+CAS_GROUP_CODES = _schemas.get("CAS_GROUP_CODES", {})
+HD_INSURANCE_LINE = set(_schemas.get("HD_INSURANCE_LINE", []))
 # HI  Diagnosis Code Qualifiers (ICD)
 HI_DIAG_QUALIFIERS = {
     "ABK","BK",   # ICD-10-CM Principal Diagnosis
@@ -567,7 +415,7 @@ def _validate_prv_segments(result, errors: list) -> None:
         if prv02 != "PXC":
             errors.append(_err(Severity.WARNING, "PRV-001", loop, seg, None, 2,
                 f"PRV02 qualifier '{prv02}' is typically 'PXC' for taxonomy codes.",
-                "Use 'PXC' for provider taxonomy."))
+                "Use 'PXC' for provider taxonomy.", fixable=True, fix_value="PXC"))
 
         if prv03 and len(prv03) != 10:
             errors.append(_err(Severity.ERROR, "PRV-002", loop, seg, None, 3,
@@ -603,7 +451,7 @@ def _validate_n3_n4(result, errors: list) -> None:
         if n4_04 and n4_04 not in VALID_ISO_COUNTRIES:
             errors.append(_err(Severity.WARNING, "N4-003", loop, seg, None, 4,
                 f"N4-04 country code '{n4_04}' is not a recognized ISO 3166 country code.",
-                "Use standard 2-letter ISO country code, e.g., 'US', 'IN', 'CA', 'GB'."))
+                "Use standard 2-letter ISO country code, e.g., 'US', 'IN', 'CA', 'GB'.", fixable=True, fix_value="US"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -754,14 +602,27 @@ def _check_835_math(loop, errors):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _get_loop_for_segment(result, target_seg) -> str:
-    if hasattr(result, "loops"):
-        for lp in result.loops:
-            for s in lp.segments:
-                if s is target_seg or (
-                    s.segment_id == target_seg.segment_id
-                    and s.line_number == target_seg.line_number
-                ):
-                    return lp.loop_id
+    if not hasattr(result, "loops"):
+        return "UNKNOWN"
+
+    def _search(loop) -> str:
+        for s in loop.segments:
+            if s is target_seg or (
+                s.segment_id == target_seg.segment_id
+                and s.line_number == target_seg.line_number
+            ):
+                return loop.loop_id
+        for child in getattr(loop, "children", []):
+            found = _search(child)
+            if found:
+                return found
+        return ""
+
+    for lp in result.loops:
+        found = _search(lp)
+        if found:
+            return found
+
     return "UNKNOWN"
 
 

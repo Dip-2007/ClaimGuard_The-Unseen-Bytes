@@ -173,6 +173,7 @@ async def fix_error(request: FixRequest):
         corrected_content=corrected,
         message=message,
         validation_result=validation,
+        parse_result=parse_result,
     )
 
 
@@ -190,6 +191,7 @@ async def fix_all_errors(request: ExportRequest):
         corrected_content=corrected,
         message=" | ".join(messages) if messages else "No auto-fixable errors found",
         validation_result=validation,
+        parse_result=parse_result,
     )
 
 
