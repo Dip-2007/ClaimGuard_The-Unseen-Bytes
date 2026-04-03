@@ -46,6 +46,8 @@ class ParseResult(BaseModel):
     loops: list[Loop] = []
     raw_content: str = ""
     segments: list[Segment] = []        # Flat list of all segments
+    total_segment_count: int = 0
+    transaction_segment_count: int = 0
 
 
 class ValidationError(BaseModel):

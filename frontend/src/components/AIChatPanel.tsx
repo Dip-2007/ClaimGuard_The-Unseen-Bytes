@@ -21,6 +21,7 @@ interface ChatSession {
 
 interface AIChatPanelProps {
   context?: string;
+  parsedContext?: string;
   onBack?: () => void;
 }
 
@@ -59,7 +60,7 @@ const renderMessageContent = (content: string) => {
   });
 };
 
-export default function AIChatPanel({ context: globalContext, onBack }: AIChatPanelProps) {
+export default function AIChatPanel({ context: globalContext, parsedContext, onBack }: AIChatPanelProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
@@ -72,9 +73,15 @@ export default function AIChatPanel({ context: globalContext, onBack }: AIChatPa
   const [activeFilterTag, setActiveFilterTag] = useState('All');
   
   const [localAttachment, setLocalAttachment] = useState<{name: string, content: string} | null>(null);
+  const [localParsedContext, setLocalParsedContext] = useState<string | null>(null);
+  const [isViewingContext, setIsViewingContext] = useState(false);
+  const [contextViewType, setContextViewType] = useState<'raw' | 'json'>('raw');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const effectiveContext = localAttachment ? localAttachment.content : globalContext;
 
   useEffect(() => {
     const stored = localStorage.getItem('claimguard_chat_sessions');
@@ -122,6 +129,7 @@ export default function AIChatPanel({ context: globalContext, onBack }: AIChatPa
     setMessages([]);
     setInput('');
     setLocalAttachment(null);
+    setLocalParsedContext(null);
     setActiveFilterTag('All');
   };
 
@@ -162,9 +170,24 @@ export default function AIChatPanel({ context: globalContext, onBack }: AIChatPa
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
       setLocalAttachment({ name: file.name, content });
+      
+      // Attempt to parse it locally
+      try {
+        const res = await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw_content: content, format: 'json' })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setLocalParsedContext(JSON.stringify(data.parse_result, null, 2));
+        }
+      } catch (err) {
+        console.error("Failed to parse local attachment", err);
+      }
       
       if (activeSessionId) {
         setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, attachedFileName: file.name, attachedContext: content } : s));
@@ -177,6 +200,7 @@ export default function AIChatPanel({ context: globalContext, onBack }: AIChatPa
 
   const removeAttachment = () => {
     setLocalAttachment(null);
+    setLocalParsedContext(null);
     if (activeSessionId) {
       setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, attachedFileName: undefined, attachedContext: undefined } : s));
     }
@@ -204,8 +228,6 @@ export default function AIChatPanel({ context: globalContext, onBack }: AIChatPa
       isNewSession = true;
       setActiveSessionId(currentId);
     }
-
-    const effectiveContext = localAttachment ? localAttachment.content : globalContext;
 
     setSessions(prev => {
       let nextState;
@@ -424,6 +446,16 @@ export default function AIChatPanel({ context: globalContext, onBack }: AIChatPa
           
           {/* Functional Top Right Buttons */}
           <div className="flex items-center gap-5 text-slate-400">
+            {effectiveContext && (
+               <button 
+                 onClick={() => setIsViewingContext(true)}
+                 title="View Context File"
+                 className="flex items-center gap-2 hover:text-white transition focus:outline-none bg-[#22c55e]/10 text-[#4ade80] px-3 py-1.5 rounded-[10px] text-xs font-semibold"
+               >
+                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                 View Context
+               </button>
+            )}
             {activeSessionId && (
               <>
                 <button 
@@ -608,6 +640,45 @@ export default function AIChatPanel({ context: globalContext, onBack }: AIChatPa
           ClaimGuard AI can make mistakes. Consider checking important information.
         </div>
       </div>
+
+      {isViewingContext && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
+          <div className="bg-[#121212] border border-[#333] rounded-[24px] w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden shadow-2xl relative animate-fade-in">
+            <div className="h-16 border-b border-[#333] flex items-center justify-between px-6 bg-[#1a1a1a]">
+              <h3 className="text-white font-semibold flex items-center gap-2">
+                <svg className="w-5 h-5 text-[#4ade80]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                {localAttachment ? localAttachment.name : "Workspace EDI Context"}
+              </h3>
+              
+              <div className="flex gap-4 items-center">
+                {(localAttachment ? localParsedContext : parsedContext) && (
+                  <div className="flex bg-[#222] p-1 rounded-lg border border-[#333]">
+                    <button onClick={() => setContextViewType('raw')} className={`px-4 py-1.5 text-xs rounded-md transition ${contextViewType === 'raw' ? 'bg-[#4ade80] text-black font-bold' : 'text-slate-400 hover:text-white'}`}>Raw EDI</button>
+                    <button onClick={() => setContextViewType('json')} className={`px-4 py-1.5 text-xs rounded-md transition ${contextViewType === 'json' ? 'bg-[#4ade80] text-black font-bold' : 'text-slate-400 hover:text-white'}`}>Parsed JSON</button>
+                  </div>
+                )}
+                
+                <button onClick={() => setIsViewingContext(false)} className="text-slate-400 hover:text-white p-2 ml-2" title="Close context viewer">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-6 bg-[#0a0a0a]">
+              <pre className="text-[#4ade80] font-mono text-[13px] whitespace-pre-wrap leading-relaxed">
+                {(contextViewType === 'json' && (localAttachment ? localParsedContext : parsedContext)) ? (localAttachment ? localParsedContext : parsedContext) : effectiveContext}
+              </pre>
+            </div>
+            <div className="h-14 border-t border-[#333] flex items-center justify-end px-6 bg-[#1a1a1a]">
+               <button 
+                  onClick={() => setIsViewingContext(false)} 
+                  className="bg-[#333] hover:bg-[#444] text-white px-5 py-2 rounded-xl text-sm font-medium transition"
+               >
+                 Close
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

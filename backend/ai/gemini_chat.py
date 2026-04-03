@@ -7,7 +7,8 @@ import os
 from parser.edi_types import ChatMessage
 
 try:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
@@ -46,13 +47,9 @@ def configure_gemini():
     if not api_key:
         return None
 
-    genai.configure(api_key=api_key)
     try:
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=SYSTEM_PROMPT,
-        )
-        return model
+        client = genai.Client(api_key=api_key)
+        return client
     except Exception:
         return None
 
@@ -66,9 +63,9 @@ async def chat_with_gemini(
     Send a message to Gemini with optional EDI context.
     Returns the AI response text.
     """
-    model = configure_gemini()
+    client = configure_gemini()
 
-    if model is None:
+    if client is None:
         # Fallback response when Gemini is not available
         return generate_fallback_response(message, context)
 
@@ -89,7 +86,14 @@ async def chat_with_gemini(
     full_prompt = "\n\n".join(prompt_parts)
 
     try:
-        response = model.generate_content(full_prompt)
+        # Using gemini-2.5-pro as the more accurate model
+        response = client.models.generate_content(
+            model="gemini-2.5-pro",
+            contents=full_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+            ),
+        )
         return response.text
     except Exception as e:
         return f"AI service error: {str(e)}. Please check your GEMINI_API_KEY."

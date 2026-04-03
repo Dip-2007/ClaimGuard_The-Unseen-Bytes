@@ -87,10 +87,14 @@ function LoopNode({ loop, depth = 0 }: { loop: Loop; depth?: number }) {
   );
 }
 
+function getAllSegments(loop: Loop): Segment[] {
+  return [...loop.segments, ...loop.children.flatMap(getAllSegments)];
+}
+
 export default function ParsedTreeViewer({ loops, transactionType }: ParsedTreeViewerProps) {
   const [viewMode, setViewMode] = useState<'tree' | 'raw'>('tree');
   const totalSegments = loops.reduce((acc, loop) => acc + countSegments(loop), 0);
-  const rawLines = loops.flatMap((loop) => loop.segments).map((segment) => segment.raw).join('\n');
+  const rawLines = loops.flatMap(getAllSegments).map((segment) => segment.raw).join('\n');
 
   return (
     <section className="glass-card panel-card">

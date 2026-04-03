@@ -162,7 +162,11 @@ export default function App() {
   ].filter((tab) => tab.available);
 
   if (activeTab === 'chat') {
-    return <AIChatPanel context={rawContent || undefined} onBack={() => setActiveTab(parseData ? 'results' : 'upload')} />;
+    return <AIChatPanel 
+       context={rawContent || undefined} 
+       parsedContext={parseData ? JSON.stringify(parseData.parse_result, null, 2) : undefined}
+       onBack={() => setActiveTab(parseData ? 'results' : 'upload')} 
+    />;
   }
 
   return (
