@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import FileUpload from './components/FileUpload';
 import ParsedTreeViewer from './components/ParsedTreeViewer';
@@ -11,6 +11,7 @@ import HeroSection from './components/HeroSection';
 import TrendingSection from './components/TrendingSection';
 
 type TabId = 'upload' | 'results' | 'chat';
+type SectionId = 'validation' | 'parsed' | 'summary';
 
 interface ParseData {
   parse_result: any;
@@ -21,7 +22,22 @@ interface ParseData {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('upload');
+  const [activeSection, setActiveSection] = useState<SectionId>('validation');
+  const [animOutDir, setAnimOutDir] = useState<'left' | 'right' | null>(null);
+  const [animInDir, setAnimInDir] = useState<'left' | 'right' | null>(null);
+  const animTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const handlePopupClick = useCallback((sectionId: SectionId, popupIndex: number) => {
+    const dir = popupIndex === 0 ? 'left' : 'right';
+    setAnimOutDir(dir);
+    if (animTimeout.current) clearTimeout(animTimeout.current);
+    animTimeout.current = setTimeout(() => {
+      setActiveSection(sectionId);
+      setAnimOutDir(null);
+      setAnimInDir(dir);
+    }, 300);
+  }, []);
   const [parseData, setParseData] = useState<ParseData | null>(null);
   const [rawContent, setRawContent] = useState('');
   const [initialRawContent, setInitialRawContent] = useState('');
@@ -215,6 +231,7 @@ export default function App() {
   }
 
   return (
+    <>
     <div className="app-shell">
       <div className="app-bg app-bg-primary" />
       <div className="app-bg app-bg-secondary" />
@@ -295,19 +312,37 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="results-grid">
-                <ParsedTreeViewer
-                  loops={parseData.parse_result?.loops || []}
-                  transactionType={parseData.transaction_type}
-                />
-                <ValidationPanel
-                  validation={parseData.validation_result}
-                  rawContent={rawContent}
-                  initialRawContent={initialRawContent}
-                  onFix={handleFix}
-                  onFixAll={handleFixAll}
-                  onRawEdit={handleRawEdit}
-                />
+              <div className={`results-workspace ${animOutDir ? 'ws-out-' + animOutDir : ''} ${animInDir ? 'ws-in-' + animInDir : ''} ${!animOutDir && !animInDir ? 'ws-initial' : ''}`}>
+                {activeSection === 'validation' && (
+                  <div className="workspace-center-panel">
+                    <ValidationPanel
+                      validation={parseData.validation_result}
+                      rawContent={rawContent}
+                      initialRawContent={initialRawContent}
+                      onFix={handleFix}
+                      onFixAll={handleFixAll}
+                      onRawEdit={handleRawEdit}
+                    />
+                  </div>
+                )}
+                {activeSection === 'parsed' && (
+                  <div className="workspace-center-panel">
+                    <ParsedTreeViewer
+                      loops={parseData.parse_result?.loops || []}
+                      transactionType={parseData.transaction_type}
+                    />
+                  </div>
+                )}
+                {activeSection === 'summary' && parseData.transaction_type === '835' && remittance && (
+                  <div className="workspace-center-panel">
+                    <RemittanceSummary summary={remittance} />
+                  </div>
+                )}
+                {activeSection === 'summary' && parseData.transaction_type === '834' && enrollment && (
+                  <div className="workspace-center-panel">
+                    <EnrollmentDashboard summary={enrollment} />
+                  </div>
+                )}
               </div>
 
               {parseData.transaction_type === '835' && remittance && <RemittanceSummary summary={remittance} />}
@@ -322,5 +357,31 @@ export default function App() {
         </footer>
       </div>
     </div>
+
+      {activeTab === 'results' && parseData && (() => {
+        const allSections: {id: SectionId; label: string; content: React.ReactNode}[] = [
+          { id: 'validation', label: 'Validation Results', content: <ValidationPanel validation={parseData.validation_result} rawContent={rawContent} initialRawContent={initialRawContent} onFix={handleFix} onFixAll={handleFixAll} onRawEdit={handleRawEdit} /> },
+          { id: 'parsed', label: 'Parsed Structure', content: <ParsedTreeViewer loops={parseData.parse_result?.loops || []} transactionType={parseData.transaction_type} /> },
+        ];
+        if (parseData.transaction_type === '835' && remittance) {
+          allSections.push({ id: 'summary', label: 'Remittance Summary', content: <RemittanceSummary summary={remittance} /> });
+        } else if (parseData.transaction_type === '834' && enrollment) {
+          allSections.push({ id: 'summary', label: 'Enrollment Dashboard', content: <EnrollmentDashboard summary={enrollment} /> });
+        }
+        const inactive = allSections.filter(s => s.id !== activeSection);
+        return inactive.map((section, index) => (
+          <div
+            key={section.id}
+            className={`workspace-popup ${index === 0 ? 'workspace-popup-left' : 'workspace-popup-right'}`}
+            onClick={() => handlePopupClick(section.id, index)}
+          >
+            <div className="popup-title">{section.label}</div>
+            <div className="popup-preview-content">
+              {section.content}
+            </div>
+          </div>
+        ));
+      })()}
+    </>
   );
 }
