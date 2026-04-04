@@ -44,6 +44,10 @@ PLACE_OF_SERVICE_CODES = set(_schemas.get("PLACE_OF_SERVICE_CODES", []))
 CLAIM_FREQUENCY_CODES = _schemas.get("CLAIM_FREQUENCY_CODES", {})
 DTP_QUALIFIER_CODES = set(_schemas.get("DTP_QUALIFIER_CODES", []))
 REF_QUALIFIER_CODES = set(_schemas.get("REF_QUALIFIER_CODES", []))
+REF_QUALIFIERS_BY_LOOP = {}
+for k, v in _schemas.get("REF_QUALIFIERS_BY_LOOP", {}).items():
+    if isinstance(v, list):
+        REF_QUALIFIERS_BY_LOOP[k] = set(v)
 SBR_PAYER_RESPONSIBILITY = set(_schemas.get("SBR_PAYER_RESPONSIBILITY", []))
 INS_RELATIONSHIP_CODES = _schemas.get("INS_RELATIONSHIP_CODES", {})
 INS_MAINTENANCE_TYPE = _schemas.get("INS_MAINTENANCE_TYPE", {})
@@ -58,7 +62,7 @@ HI_DIAG_QUALIFIERS = {
     "ZZ",
 }
 
-CARC_CODES = {} # kept for backward compatibility with router
+CARC_CODES = _schemas.get("CAS_REASON_CODES", {}) # updated from tr3_schemas.json
 RARC_CODES = {} # kept for backward compatibility with router
 
 
@@ -373,15 +377,22 @@ def _validate_dtp_segments(result, errors: list) -> None:
                     "Example: '2024010120240131'."))
 
 def _validate_ref_segments(result, errors: list) -> None:
+    tx = getattr(result, "transaction_type", "")
     for seg in _find_segments(result, "REF"):
         loop = _get_loop_for_segment(result, seg)
         ref01 = _get_elem(seg, 1)
         ref02 = _get_elem(seg, 2)
 
-        if ref01 and ref01 not in REF_QUALIFIER_CODES:
+        valid_qualifiers = REF_QUALIFIER_CODES
+        if tx and loop:
+            context_key = f"{tx}_{loop}"
+            if context_key in REF_QUALIFIERS_BY_LOOP:
+                valid_qualifiers = REF_QUALIFIERS_BY_LOOP[context_key]
+
+        if ref01 and ref01 not in valid_qualifiers:
             errors.append(_err(Severity.WARNING, "REF-001", loop, seg, None, 1,
-                f"REF01 qualifier '{ref01}' is not recognized.",
-                "Review HIPAA reference qualifiers format."))
+                f"REF01 qualifier '{ref01}' is not valid in Loop {loop}.",
+                "Review HIPAA reference qualifiers format for this specific loop."))
 
         if not ref02:
             errors.append(_err(Severity.ERROR, "REF-002", loop, seg, None, 2,
