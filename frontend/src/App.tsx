@@ -5,6 +5,9 @@ import ValidationPanel from './components/ValidationPanel';
 import AIChatPanel from './components/AIChatPanel';
 import RemittanceSummary from './components/RemittanceSummary';
 import EnrollmentDashboard from './components/EnrollmentDashboard';
+import Navbar from './components/Navbar';
+import HeroSection from './components/HeroSection';
+import TrendingSection from './components/TrendingSection';
 
 type TabId = 'upload' | 'results' | 'chat';
 
@@ -14,26 +17,6 @@ interface ParseData {
   transaction_type: string;
   transaction_type_label: string;
 }
-
-const capabilityCards = [
-  {
-    eyebrow: 'Parse',
-    title: 'Readable X12 structure',
-    description: 'Turn flat EDI text into loop trees, segment maps, and transaction-aware summaries.',
-  },
-  {
-    eyebrow: 'Validate',
-    title: 'Faster compliance review',
-    description: 'Surface errors, warnings, and context-rich suggestions in one operator-friendly panel.',
-  },
-  {
-    eyebrow: 'Repair',
-    title: 'Deterministic fixes',
-    description: 'Apply targeted corrections and export cleaned payloads without leaving the workflow.',
-  },
-];
-
-const supportedTransactions = ['837P / 837I claims', '835 remittance', '834 enrollment'];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('upload');
@@ -187,18 +170,17 @@ export default function App() {
     [rawContent],
   );
 
-  const tabs = [
-    { id: 'upload' as TabId, label: 'Workspace', available: true },
-    { id: 'results' as TabId, label: 'Results', available: !!parseData },
-    { id: 'chat' as TabId, label: 'AI Guide', available: true },
-  ].filter((tab) => tab.available);
-
   if (activeTab === 'chat') {
-    return <AIChatPanel 
-       context={rawContent || undefined} 
-       parsedContext={parseData ? JSON.stringify(parseData.parse_result, null, 2) : undefined}
-       onBack={() => setActiveTab(parseData ? 'results' : 'upload')} 
-    />;
+    return (
+      <>
+        <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} />
+        <AIChatPanel 
+           context={rawContent || undefined} 
+           parsedContext={parseData ? JSON.stringify(parseData.parse_result, null, 2) : undefined}
+           onBack={() => setActiveTab(parseData ? 'results' : 'upload')} 
+        />
+      </>
+    );
   }
 
   return (
@@ -207,46 +189,9 @@ export default function App() {
       <div className="app-bg app-bg-secondary" />
       <div className="app-bg app-bg-grid" />
 
+      <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} />
+
       <div className="app-frame">
-        <header className="topbar">
-          <div className="brand-mark">
-            <div className="brand-badge">CG</div>
-            <div>
-              <p className="brand-title">ClaimGuard</p>
-              <p className="brand-subtitle">EDI triage cockpit</p>
-            </div>
-          </div>
-
-          <nav className="topbar-nav" aria-label="Primary">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`tab-pill ${activeTab === tab.id ? 'tab-pill-active' : ''}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-
-          <div className="topbar-actions">
-            {parseData ? (
-              <>
-                <button onClick={() => handleExport('json')} className="btn-secondary compact">
-                  Export JSON
-                </button>
-                <button onClick={() => handleExport('edi')} className="btn-secondary compact">
-                  Export EDI
-                </button>
-                <button onClick={() => handleExport('csv')} className="btn-secondary compact">
-                  Export CSV
-                </button>
-              </>
-            ) : (
-              <span className="status-chip subtle">Ready for upload</span>
-            )}
-          </div>
-        </header>
 
         {loading && (
           <div className="progress-rail" aria-label="Processing file">
@@ -257,49 +202,11 @@ export default function App() {
         <main className="main-content">
           {activeTab === 'upload' && (
             <section className="upload-layout animate-fade-in">
-              <div className="hero-panel glass-card">
-                <div className="hero-copy">
-                  <span className="eyebrow">EDI operations, redesigned</span>
-                  <h1 className="hero-title">Parse, validate, repair, and review healthcare transactions in one calm workspace.</h1>
-                  <p className="hero-description">
-                    Built for hackathon speed, but styled like a real product. Upload a live file or try a sample to inspect
-                    structural loops, validation findings, remittance totals, and enrollment changes in minutes.
-                  </p>
-
-                  <div className="hero-badges">
-                    {supportedTransactions.map((item) => (
-                      <span key={item} className="status-chip">
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="hero-stats">
-                  <div className="metric-card">
-                    <span className="metric-label">Focus</span>
-                    <strong>Cleaner claim workflows</strong>
-                    <p>Designed to reduce context switching from upload to AI support.</p>
-                  </div>
-                  <div className="metric-card">
-                    <span className="metric-label">Output</span>
-                    <strong>Human-readable diagnostics</strong>
-                    <p>Validation issues and summaries stay legible even on dense files.</p>
-                  </div>
-                </div>
-              </div>
+              <HeroSection />
 
               <FileUpload onFileProcessed={handleFileProcessed} onRawContent={setRawContent} onLoading={setLoading} />
 
-              <div className="feature-grid">
-                {capabilityCards.map((card) => (
-                  <article key={card.title} className="feature-card glass-card glass-card-hover">
-                    <span className="eyebrow">{card.eyebrow}</span>
-                    <h2>{card.title}</h2>
-                    <p>{card.description}</p>
-                  </article>
-                ))}
-              </div>
+              <TrendingSection />
             </section>
           )}
 
