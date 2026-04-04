@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import styled, { keyframes } from 'styled-components';
 import { Home, ShieldCheck, MessageSquare, Plus, FileDown, Bot } from 'lucide-react';
 
@@ -23,10 +23,15 @@ interface NavbarProps {
 // ─── Navbar Component ────────────────────────────────────────────────────────
 export default function Navbar({ activeTab, onTabChange, hasResults, onExport }: NavbarProps) {
   const { scrollY } = useScroll();
-  const navMaxWidth = useTransform(scrollY, [0, 150], ["1400px", "1000px"]);
-  const navBackground = useTransform(scrollY, [0, 150], ['rgba(22, 22, 22, 0.72)', 'rgba(15, 15, 16, 0.88)']);
-  const navBackdrop = useTransform(scrollY, [0, 150], ['blur(24px)', 'blur(32px)']);
-  const navBoxShadow = useTransform(scrollY, [0, 150], ['0 24px 80px rgba(0,0,0,0.45)', '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255, 255, 255, 0.08)']);
+  const smoothScrollY = useSpring(scrollY, { stiffness: 60, damping: 22, restDelta: 0.001 });
+  
+  const navMaxWidth = useTransform(smoothScrollY, [0, 150], ["1400px", "1000px"]);
+  const navBackground = useTransform(smoothScrollY, [0, 150], ['rgba(15, 15, 18, 0.35)', 'rgba(10, 10, 14, 0.65)']);
+  const navBackdrop = useTransform(smoothScrollY, [0, 150], ['blur(16px)', 'blur(32px)']);
+  const navBoxShadow = useTransform(smoothScrollY, [0, 150], [
+    '0 8px 32px 0 rgba(0, 0, 0, 0.25), inset 0 1px 1px 0 rgba(255, 255, 255, 0.05)', 
+    '0 12px 48px 0 rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.1)'
+  ]);
 
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -63,12 +68,13 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
       {/* Top Header — glassmorphism notch */}
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-        background: 'rgba(15, 15, 16, 0.82)', backdropFilter: 'blur(24px)',
+        background: 'rgba(15, 15, 20, 0.4)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         padding: '12px 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <div style={{ height: '2px', position: 'absolute', top: 0, left: 0, right: 0, background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), rgba(200, 200, 200, 0.2), transparent)' }} />
         <LogoLoader />
         {hasResults && onExport && (
           <div style={{ position: 'relative' }}>
@@ -126,14 +132,22 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
           position: 'absolute', inset: 0, width: '100%', height: '100%',
         }}>
           <path
-            d="M0 20 Q0 0 20 0 L155 0 Q170 0 175 14 Q185 40 200 40 Q215 40 225 14 Q230 0 245 0 L380 0 Q400 0 400 20 L400 80 L0 80 Z"
-            fill="rgba(15, 15, 16, 0.92)"
+            fill="rgba(10, 10, 14, 0.65)"
           />
           <path
             d="M0 20 Q0 0 20 0 L155 0 Q170 0 175 14 Q185 40 200 40 Q215 40 225 14 Q230 0 245 0 L380 0 Q400 0 400 20 L400 80 L0 80 Z"
-            fill="none" stroke="rgba(74, 222, 128, 0.12)" strokeWidth="0.5"
+            fill="none" 
+            stroke="rgba(255, 255, 255, 0.08)" 
+            strokeWidth="0.5"
           />
         </svg>
+
+        {/* Backdrop for the SVG mask area */}
+        <div style={{
+          position: 'absolute', inset: 0, 
+          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+          zIndex: -1, pointerEvents: 'none',
+        }} />
 
         {/* Nav Items — left and right of FAB */}
         <div style={{
@@ -282,17 +296,21 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
           borderRadius: 100,
           background: navBackground,
           backdropFilter: navBackdrop,
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          WebkitBackdropFilter: navBackdrop,
+          border: '1px solid rgba(255, 255, 255, 0.12)',
           boxShadow: navBoxShadow,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 22px',
+          transform: 'translateZ(0)',
+          backfaceVisibility: 'hidden',
+          willChange: 'max-width, background-color, backdrop-filter, box-shadow',
         }}
       >
         {/* Left — Logo */}
         <LogoLoader />
 
         {/* Center — Nav Links */}
-        <div style={{ display: 'flex', gap: 4, padding: 5, borderRadius: 999, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ display: 'flex', gap: 16 }}>
           {availableItems.map(item => (
             <RippleButton
               key={item.id}
@@ -469,13 +487,12 @@ const StyledRippleButton = styled.button`
   border: 0;
   background: transparent;
   color: #888;
-  padding: 10px 18px;
-  border-radius: 999px;
+  padding: 8px 4px;
   font-weight: 600;
   cursor: pointer;
   overflow: hidden;
   font-family: inherit;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: color 0.2s ease;
 
   .ripple-content {
     position: relative;
@@ -489,7 +506,7 @@ const StyledRippleButton = styled.button`
   .ripple-text {
     display: block;
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s;
-    font-size: 0.88rem;
+    font-size: 0.95rem;
   }
 
   .ripple-icon {
@@ -500,10 +517,10 @@ const StyledRippleButton = styled.button`
     transform: translateY(120%);
     opacity: 0;
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s;
+    color: #4ade80;
   }
 
   &:hover {
-    background: rgba(255, 255, 255, 0.06);
     color: #fff;
 
     .ripple-text {
@@ -517,12 +534,10 @@ const StyledRippleButton = styled.button`
   }
 
   &.active {
-    color: #050907;
-    background: #4ade80;
-    box-shadow: 0 10px 24px rgba(74, 222, 128, 0.28);
+    color: #4ade80;
 
     .ripple-icon {
-      color: #050907;
+      color: #4ade80;
     }
 
     &:hover .ripple-text {
@@ -555,9 +570,12 @@ const UniverseButtonWrapper = styled.button`
   width: 72px;
   height: 38px;
   overflow: hidden;
-  background: radial-gradient(circle at 40% 40%, #1a1032, #0a0a14);
+  background: radial-gradient(circle at 40% 40%, rgba(26, 16, 50, 0.6), rgba(10, 10, 20, 0.8));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   box-shadow:
     inset 0 0 12px rgba(139, 92, 246, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
     0 4px 16px rgba(0, 0, 0, 0.4);
   transition: box-shadow 0.3s, transform 0.2s;
   font-family: inherit;
