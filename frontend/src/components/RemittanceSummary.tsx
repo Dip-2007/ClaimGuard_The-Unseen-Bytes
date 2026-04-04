@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import { Maximize2, Minimize2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+
 interface RemittanceSummaryProps {
   summary: {
     total_charged: number;
@@ -14,17 +18,27 @@ function formatCurrency(amount: number): string {
 }
 
 export default function RemittanceSummary({ summary }: RemittanceSummaryProps) {
+  const [isMaximized, setIsMaximized] = useState(false);
   const paidPercent = summary.total_charged > 0 ? ((summary.total_paid / summary.total_charged) * 100).toFixed(1) : '0';
 
-  return (
-    <section className="glass-card panel-card animate-fade-in">
-      <div className="panel-header">
+  const renderedPanel = (
+    <section className={`glass-card panel-card animate-fade-in flex flex-col transition-all duration-300 ${isMaximized ? 'w-full max-w-[1400px] h-[90vh] shadow-2xl relative z-10 overflow-y-auto' : ''}`}>
+      <div className="panel-header shrink-0">
         <div>
-          <h3 className="panel-title">835 remittance summary</h3>
-          <p className="panel-subtitle">Payment, adjustment, and denial totals extracted from the uploaded remit.</p>
+            <h3 className="panel-title">835 remittance summary</h3>
+            <p className="panel-subtitle">Payment, adjustment, and denial totals extracted from the uploaded remit.</p>
+          </div>
+          <div className="flex gap-4 items-center">
+            <span className="badge badge-success">{paidPercent}% paid</span>
+            <button
+              onClick={() => setIsMaximized(!isMaximized)}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+              title={isMaximized ? "Restore view" : "Maximize view"}
+            >
+              {isMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            </button>
+          </div>
         </div>
-        <span className="badge badge-success">{paidPercent}% paid</span>
-      </div>
 
       <div className="stat-grid mb-5">
         <div className="summary-stat surface-panel">
@@ -87,4 +101,16 @@ export default function RemittanceSummary({ summary }: RemittanceSummaryProps) {
       </div>
     </section>
   );
+
+  if (isMaximized) {
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-fade-in">
+        <div className="absolute inset-0 cursor-pointer" onClick={() => setIsMaximized(false)} />
+        {renderedPanel}
+      </div>,
+      document.body
+    );
+  }
+
+  return renderedPanel;
 }

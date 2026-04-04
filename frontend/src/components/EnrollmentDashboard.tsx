@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import { Maximize2, Minimize2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+
 interface EnrollmentDashboardProps {
   summary: {
     total_members: number;
@@ -17,15 +21,26 @@ const maintenanceBadgeClass: Record<string, string> = {
 };
 
 export default function EnrollmentDashboard({ summary }: EnrollmentDashboardProps) {
-  return (
-    <section className="glass-card panel-card animate-fade-in">
-      <div className="panel-header">
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  const renderedPanel = (
+    <section className={`glass-card panel-card animate-fade-in flex flex-col transition-all duration-300 ${isMaximized ? 'w-full max-w-[1400px] h-[90vh] shadow-2xl relative z-10 overflow-y-auto' : ''}`}>
+      <div className="panel-header shrink-0">
         <div>
-          <h3 className="panel-title">834 enrollment dashboard</h3>
-          <p className="panel-subtitle">Member changes grouped for quick eligibility and coverage review.</p>
+            <h3 className="panel-title">834 enrollment dashboard</h3>
+            <p className="panel-subtitle">Member changes grouped for quick eligibility and coverage review.</p>
+          </div>
+          <div className="flex gap-4 items-center">
+            <span className="badge badge-info">{summary.total_members} members</span>
+            <button
+              onClick={() => setIsMaximized(!isMaximized)}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+              title={isMaximized ? "Restore view" : "Maximize view"}
+            >
+              {isMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            </button>
+          </div>
         </div>
-        <span className="badge badge-info">{summary.total_members} members</span>
-      </div>
 
       <div className="stat-grid mb-5">
         <div className="summary-stat surface-panel">
@@ -86,4 +101,16 @@ export default function EnrollmentDashboard({ summary }: EnrollmentDashboardProp
       </div>
     </section>
   );
+
+  if (isMaximized) {
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-fade-in">
+        <div className="absolute inset-0 cursor-pointer" onClick={() => setIsMaximized(false)} />
+        {renderedPanel}
+      </div>,
+      document.body
+    );
+  }
+
+  return renderedPanel;
 }

@@ -341,6 +341,9 @@ export default function App() {
           <motion.div
             layoutId={`workspace-${section.id}`}
             key={section.id}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9, transition: { duration: 0.15 } }}
             className={`workspace-popup ${index === 0 ? 'workspace-popup-left' : 'workspace-popup-right'}`}
             onClick={() => handlePopupClick(section.id)}
             transition={{ type: 'spring', stiffness: 90, damping: 20, mass: 1.2 }}
