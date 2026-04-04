@@ -1,6 +1,7 @@
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import styled, { keyframes, css } from 'styled-components';
+import GlareHover from './GlareHover';
 
 interface FileUploadProps {
   onFileProcessed: (data: any) => void;
@@ -39,6 +40,20 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
   const [progress, setProgress] = useState(0);
   const dropRef = useRef<HTMLDivElement>(null);
   const dragCounter = useRef(0);
+  const dataRef = useRef<any>(null);
+  const timeoutsRef = useRef<number[]>([]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => timeoutsRef.current.forEach(t => clearTimeout(t));
+  }, []);
+
+  const handleTapResult = useCallback(() => {
+    if (dataRef.current) {
+      timeoutsRef.current.forEach(t => clearTimeout(t));
+      onFileProcessed(dataRef.current);
+    }
+  }, [onFileProcessed]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -81,6 +96,7 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
         }
 
         const data = await response.json();
+        dataRef.current = data;
 
         clearInterval(interval);
         setProgress(100);
@@ -90,20 +106,20 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
         }
 
         // ─── SLOWED DOWN TRANSITION TIMINGS ───
-        // Hold at 100% for 1.2s so user sees the full progress bar
-        setTimeout(() => {
+        const t1 = window.setTimeout(() => {
           setUploadState('success');
 
-          // Hold success checkmark for 2.5s (was 1.2s) — slow and satisfying
-          setTimeout(() => {
+          const t2 = window.setTimeout(() => {
             setUploadState('complete');
 
-            // Show file card for 2s (was 1.4s) before navigating
-            setTimeout(() => {
+            const t3 = window.setTimeout(() => {
               onFileProcessed(data);
             }, 2000);
+            timeoutsRef.current.push(t3);
           }, 2500);
+          timeoutsRef.current.push(t2);
         }, 1200);
+        timeoutsRef.current.push(t1);
       } catch (err: any) {
         clearInterval(interval);
         setError(err.message || 'Failed to process file');
@@ -183,7 +199,25 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
   const showShimmer = isUploading || isSuccess;
 
   return (
-    <section className="glass-card panel-card animate-fade-in">
+    <section className="panel-card animate-fade-in" style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <GlareHover
+        width="100%"
+        height="auto"
+        background="transparent"
+        borderRadius="24px"
+        borderColor="transparent"
+        glareColor="#54d0ff"
+        glareOpacity={0.15}
+        glareAngle={-35}
+        glareSize={200}
+        transitionDuration={800}
+        style={{ 
+          border: 'none', 
+          height: 'auto', 
+          maxWidth: '640px', 
+          width: '100%'
+        }}
+      >
       <DropContainer
         ref={dropRef}
         $state={uploadState}
@@ -369,12 +403,17 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
                 }}
                 style={{ textAlign: 'center' }}
               >
-                {/* Animated checkmark with glow ring */}
+                {/* Animated checkmark with glow ring — NOW INTERACTIVE */}
                 <CheckmarkContainer
                   as={motion.div}
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: 'spring', stiffness: 180, damping: 14, delay: 0.2 }}
+                  whileHover={{ scale: 1.1, filter: 'brightness(1.2) drop-shadow(0 0 15px rgba(74, 222, 128, 0.4))' }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleTapResult}
+                  style={{ cursor: 'pointer' }}
+                  title="View Results Now"
                 >
                   <CheckmarkGlowRing />
                   <CheckmarkInner>
@@ -419,9 +458,11 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
                 key="complete"
                 initial={{ opacity: 0, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, filter: 'blur(0px)' }}
-                exit={{ opacity: 0 }}
+                exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.7, ease: 'easeOut' }}
-                style={{ textAlign: 'center', width: '100%' }}
+                style={{ textAlign: 'center', width: '100%', cursor: 'pointer' }}
+                onClick={handleTapResult}
+                title="Tap to see result"
               >
                 <SmallCheckWrap
                   as={motion.div}
@@ -456,6 +497,7 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
           </AnimatePresence>
         </ContentLayer>
       </DropContainer>
+      </GlareHover>
 
       {/* ━━━ FILE ITEM CARD ━━━ */}
       <AnimatePresence>
@@ -540,7 +582,7 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
 
 function Doc3DSVG({ isDragover }: { isDragover: boolean }) {
   return (
-    <svg width="80" height="92" viewBox="0 0 80 92" fill="none" xmlns="http://www.w3.org/2000/svg"
+    <svg width="64" height="74" viewBox="0 0 80 92" fill="none" xmlns="http://www.w3.org/2000/svg"
       style={{ filter: 'drop-shadow(0 20px 40px rgba(59, 89, 152, 0.5)) drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }}
     >
       {/* Shadow page — deepest layer */}
@@ -646,11 +688,13 @@ const haloBreath = keyframes`
 
 const DropContainer = styled.div<{ $state: UploadState }>`
   position: relative;
-  padding: 56px 40px;
-  border-radius: 20px;
+  padding: 32px 40px;
+  border-radius: 24px;
   overflow: hidden;
-  min-height: 320px;
+  width: 100%;
+  min-height: 280px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: ${({ $state }) => ($state === 'idle' || $state === 'complete' ? 'pointer' : 'default')};
@@ -825,7 +869,7 @@ const ContentLayer = styled.div`
 const DocIcon3DContainer = styled.div`
   display: flex;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   perspective: 600px;
   transform-style: preserve-3d;
   position: relative;
@@ -849,8 +893,8 @@ const DocGlowHalo = styled.div<{ $active: boolean }>`
 `;
 
 const DropTitle = styled.h2`
-  margin: 0 0 8px;
-  font-size: 1.6rem;
+  margin: 0 0 6px;
+  font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #fff;
@@ -1086,6 +1130,7 @@ const ErrorDismiss = styled.button`
 
 const SampleSection = styled.div`
   margin-top: 32px;
+  width: 100%;
 `;
 
 const SampleGrid = styled.div`

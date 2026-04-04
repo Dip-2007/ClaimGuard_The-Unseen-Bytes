@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import FileUpload from './components/FileUpload';
 import ParsedTreeViewer from './components/ParsedTreeViewer';
 import ValidationPanel from './components/ValidationPanel';
@@ -26,6 +27,11 @@ export default function App() {
   const [initialRawContent, setInitialRawContent] = useState('');
   const [remittance, setRemittance] = useState<any>(null);
   const [enrollment, setEnrollment] = useState<any>(null);
+
+  // Reset scroll position when switching tabs
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
 
   const handleFileProcessed = useCallback(async (data: any) => {
     setParseData(data);
@@ -225,30 +231,49 @@ export default function App() {
         )}
 
         <main className="main-content">
-          {activeTab === 'upload' && (
-            <section className="upload-layout animate-fade-in">
-              <HeroSection />
+          <AnimatePresence mode="wait">
+            {activeTab === 'upload' && (
+              <motion.section 
+                key="upload"
+                className="upload-layout"
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <HeroSection />
 
-              <FileUpload 
-                onFileProcessed={handleFileProcessed} 
-                onRawContent={(c) => { setRawContent(c); setInitialRawContent(c); }} 
-                onLoading={setLoading} 
-              />
+                <FileUpload 
+                  onFileProcessed={handleFileProcessed} 
+                  onRawContent={(c) => { setRawContent(c); setInitialRawContent(c); }} 
+                  onLoading={setLoading} 
+                />
 
-              <TrendingSection />
-            </section>
-          )}
+                <TrendingSection />
+              </motion.section>
+            )}
 
-          {activeTab === 'results' && parseData && (
-            <section className="results-layout animate-fade-in">
-              <div className="results-header glass-card">
-                <div>
-                  <div className="results-eyebrow">Current transaction</div>
-                  <div className="results-title-row">
-                    <span className="transaction-pill">{parseData.transaction_type}</span>
-                    <h2>{parseData.transaction_type_label}</h2>
+            {activeTab === 'results' && parseData && (
+              <motion.section 
+                key="results"
+                className="results-layout"
+                initial={{ opacity: 0, y: 40, filter: 'blur(8px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, y: -20, filter: 'blur(8px)' }}
+                transition={{ 
+                  duration: 0.4, 
+                  ease: "easeOut",
+                  opacity: { duration: 0.3 }
+                }}
+              >
+                <div className="results-header glass-card">
+                  <div>
+                    <div className="results-eyebrow">Current transaction</div>
+                    <div className="results-title-row">
+                      <span className="transaction-pill">{parseData.transaction_type}</span>
+                      <h2>{parseData.transaction_type_label}</h2>
+                    </div>
                   </div>
-                </div>
 
                 <div className="results-meta">
                   <div className="meta-block">
@@ -287,8 +312,9 @@ export default function App() {
 
               {parseData.transaction_type === '835' && remittance && <RemittanceSummary summary={remittance} />}
               {parseData.transaction_type === '834' && enrollment && <EnrollmentDashboard summary={enrollment} />}
-            </section>
+            </motion.section>
           )}
+          </AnimatePresence>
         </main>
 
         <footer className="app-footer">
