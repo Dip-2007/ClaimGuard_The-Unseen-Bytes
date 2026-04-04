@@ -195,6 +195,21 @@ async def fix_all_errors(request: ExportRequest):
     )
 
 
+@app.post("/api/validate-raw", response_model=FixResponse)
+async def validate_raw_content(request: ExportRequest):
+    """Re-validate raw EDI content directly provided by the user."""
+    parse_result = parse_edi(request.raw_content)
+    validation = validate_edi(parse_result)
+
+    return FixResponse(
+        success=True,
+        corrected_content=request.raw_content,
+        message="Manual edits re-validated successfully",
+        validation_result=validation,
+        parse_result=parse_result,
+    )
+
+
 # ── AI Chat ────────────────────────────────────────────────────────────
 
 @app.post("/api/chat", response_model=ChatResponse)

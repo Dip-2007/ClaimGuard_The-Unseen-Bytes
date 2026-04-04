@@ -23,6 +23,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [parseData, setParseData] = useState<ParseData | null>(null);
   const [rawContent, setRawContent] = useState('');
+  const [initialRawContent, setInitialRawContent] = useState('');
   const [remittance, setRemittance] = useState<any>(null);
   const [enrollment, setEnrollment] = useState<any>(null);
 
@@ -85,13 +86,6 @@ export default function App() {
               : prev
           );
 
-          const blob = new Blob([data.corrected_content], { type: 'text/plain' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `adjusted_${errorId}.edi`;
-          a.click();
-          URL.revokeObjectURL(url);
         }
       } catch (err) {
         console.error('Fix error:', err);
@@ -121,18 +115,37 @@ export default function App() {
             : prev
         );
 
-        const blob = new Blob([data.corrected_content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'fully_corrected.edi';
-        a.click();
-        URL.revokeObjectURL(url);
       }
     } catch (err) {
       console.error('Fix all error:', err);
     }
   }, [rawContent]);
+
+  const handleRawEdit = useCallback(async (newRawContent: string) => {
+    if (!newRawContent) return;
+    try {
+      const res = await fetch('/api/validate-raw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw_content: newRawContent }),
+      });
+      const data = await res.json();
+      if (data.corrected_content) {
+        setRawContent(data.corrected_content);
+        setParseData((prev) =>
+          prev
+            ? {
+                ...prev,
+                validation_result: data.validation_result,
+                parse_result: data.parse_result || prev.parse_result,
+              }
+            : prev
+        );
+      }
+    } catch (err) {
+      console.error('Raw edit error:', err);
+    }
+  }, []);
 
   const handleExport = useCallback(
     async (format: string) => {
@@ -204,7 +217,11 @@ export default function App() {
             <section className="upload-layout animate-fade-in">
               <HeroSection />
 
-              <FileUpload onFileProcessed={handleFileProcessed} onRawContent={setRawContent} onLoading={setLoading} />
+              <FileUpload 
+                onFileProcessed={handleFileProcessed} 
+                onRawContent={(c) => { setRawContent(c); setInitialRawContent(c); }} 
+                onLoading={setLoading} 
+              />
 
               <TrendingSection />
             </section>
@@ -249,8 +266,10 @@ export default function App() {
                 <ValidationPanel
                   validation={parseData.validation_result}
                   rawContent={rawContent}
+                  initialRawContent={initialRawContent}
                   onFix={handleFix}
                   onFixAll={handleFixAll}
+                  onRawEdit={handleRawEdit}
                 />
               </div>
 
