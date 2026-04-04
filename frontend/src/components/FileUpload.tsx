@@ -332,7 +332,7 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
                   animate={
                     uploadState === 'dragover'
                       ? { color: '#54d0ff', scale: 1.05, textShadow: '0 0 30px rgba(84,208,255,0.4)' }
-                      : { color: '#ffffff', scale: 1, textShadow: '0 0 0px transparent' }
+                      : { color: document.documentElement.getAttribute('data-theme') === 'light' ? '#1e293b' : '#ffffff', scale: 1, textShadow: '0 0 0px transparent' }
                   }
                   transition={{ duration: 0.4 }}
                 >
@@ -549,9 +549,9 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="eyebrow">Sample files</p>
-            <h3 className="mt-3 text-xl font-semibold text-white">Try the workflow without uploading your own data</h3>
+            <h3 className="mt-3 text-xl font-semibold" style={{ color: 'var(--text)' }}>Try the workflow without uploading your own data</h3>
           </div>
-          <p className="hidden text-sm text-slate-400 md:block">One click loads a transaction and opens the results panel.</p>
+          <p className="hidden text-sm md:block" style={{ color: 'var(--muted)' }}>One click loads a transaction and opens the results panel.</p>
         </div>
 
         <SampleGrid>
@@ -699,7 +699,7 @@ const DropContainer = styled.div<{ $state: UploadState }>`
   justify-content: center;
   cursor: ${({ $state }) => ($state === 'idle' || $state === 'complete' ? 'pointer' : 'default')};
   transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  background: #0b1120;
+  background: var(--bg-elevated);
 
   ${({ $state }) =>
     $state === 'idle' &&
@@ -707,7 +707,7 @@ const DropContainer = styled.div<{ $state: UploadState }>`
       border: 1.5px dashed rgba(255, 255, 255, 0.1);
       &:hover {
         border-color: rgba(84, 208, 255, 0.3);
-        background: #0d1524;
+        background: var(--bg-card);
         box-shadow: 0 0 60px rgba(84, 208, 255, 0.04);
       }
     `}
@@ -716,7 +716,7 @@ const DropContainer = styled.div<{ $state: UploadState }>`
     $state === 'dragover' &&
     css`
       border: 1.5px solid rgba(84, 208, 255, 0.6);
-      background: radial-gradient(circle at 50% 50%, rgba(84, 208, 255, 0.04) 0%, #0b1120 70%);
+      background: radial-gradient(circle at 50% 50%, rgba(84, 208, 255, 0.04) 0%, var(--bg-elevated) 70%);
       box-shadow: 0 0 80px rgba(84, 208, 255, 0.06);
     `}
 
@@ -730,7 +730,7 @@ const DropContainer = styled.div<{ $state: UploadState }>`
     $state === 'complete' &&
     css`
       border: 1.5px solid rgba(74, 222, 128, 0.25);
-      background: #0b1120;
+      background: var(--bg-elevated);
     `}
 `;
 
@@ -844,6 +844,29 @@ const ShimmerBg = styled.div`
     inset: 0;
     background: radial-gradient(ellipse at 50% 40%, rgba(84, 208, 255, 0.06) 0%, transparent 60%);
   }
+
+  [data-theme="light"] & {
+    background:
+      repeating-linear-gradient(
+        -55deg,
+        transparent 0px,
+        transparent 8px,
+        rgba(5, 118, 66, 0.025) 8px,
+        rgba(5, 118, 66, 0.025) 9px
+      ),
+      linear-gradient(
+        135deg,
+        rgba(243, 242, 239, 0.95) 0%,
+        rgba(238, 237, 233, 0.9) 30%,
+        rgba(240, 239, 235, 0.92) 60%,
+        rgba(245, 244, 241, 0.95) 100%
+      );
+    background-size: 400% 100%, 100% 100%;
+  }
+
+  [data-theme="light"] &::after {
+    background: radial-gradient(ellipse at 50% 40%, rgba(5, 118, 66, 0.03) 0%, transparent 60%);
+  }
 `;
 
 const SuccessPulseRing = styled.div`
@@ -897,12 +920,12 @@ const DropTitle = styled.h2`
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: var(--text);
 `;
 
 const DropSubtext = styled.p`
   margin: 0;
-  color: #888;
+  color: var(--muted);
   font-size: 0.95rem;
 `;
 
@@ -923,7 +946,7 @@ const BrowseLink = styled.span`
 
 const RequirementsText = styled.p`
   margin: 20px 0 0;
-  color: #555;
+  color: var(--muted);
   font-size: 0.78rem;
 `;
 
@@ -938,7 +961,7 @@ const ProgressTrack = styled.div`
   position: relative;
   height: 5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface);
   overflow: visible;
 `;
 
@@ -966,14 +989,14 @@ const ProgressFill = styled.div`
 const PercentageText = styled.div`
   font-size: 1.15rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-secondary);
   margin-bottom: 8px;
 `;
 
 const UploadingText = styled.p`
   font-size: 1.1rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--muted);
   margin: 0;
 `;
 
@@ -1034,8 +1057,8 @@ const FileItemCard = styled.div`
   margin-top: 16px;
   padding: 16px 20px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--surface);
+  border: 1px solid var(--border);
   backdrop-filter: blur(8px);
 `;
 
@@ -1065,7 +1088,7 @@ const FileItemDetails = styled.div`
 const FileItemName = styled.div`
   font-size: 0.9rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1073,7 +1096,7 @@ const FileItemName = styled.div`
 
 const FileItemSize = styled.div`
   font-size: 0.75rem;
-  color: #777;
+  color: var(--muted);
   margin-top: 2px;
 `;
 
@@ -1088,14 +1111,14 @@ const FileActionBtn = styled.button`
   display: grid;
   place-items: center;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: #888;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
   cursor: pointer;
   transition: all 0.3s;
 
   &:hover {
-    color: #fff;
+    color: var(--text);
     border-color: rgba(255, 255, 255, 0.15);
     background: rgba(255, 255, 255, 0.08);
     box-shadow: 0 0 12px rgba(255, 255, 255, 0.05);
@@ -1144,14 +1167,13 @@ const SampleCard = styled.button`
   padding: 18px;
   text-align: left;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border);
   color: inherit;
-  background: rgba(255, 255, 255, 0.03);
-  cursor: pointer;
+  background: var(--surface);
   transition: background 0.3s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-hover);
   }
 
   strong {
@@ -1161,7 +1183,7 @@ const SampleCard = styled.button`
 
   p {
     margin: 6px 0 0;
-    color: #888;
+    color: var(--muted);
     font-size: 0.88rem;
   }
 `;

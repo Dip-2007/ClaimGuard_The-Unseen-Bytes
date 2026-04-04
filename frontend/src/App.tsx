@@ -246,33 +246,31 @@ export default function App() {
             </div>
           )}
 
-          <main className="main-content">
-            {activeTab === 'upload' && (
-              <section className="upload-layout animate-fade-in">
-                <HeroSection onScrollToUpload={handleScrollToUpload} />
+        <main className="main-content">
+          {activeTab === 'upload' && (
+            <section className="upload-layout animate-fade-in">
+              <HeroSection />
 
-                <div ref={fileUploadRef}>
-                  <FileUpload
-                    onFileProcessed={handleFileProcessed}
-                    onRawContent={(c) => { setRawContent(c); setInitialRawContent(c); }}
-                    onLoading={setLoading}
-                  />
-                </div>
+              <FileUpload 
+                onFileProcessed={handleFileProcessed} 
+                onRawContent={(c) => { setRawContent(c); setInitialRawContent(c); }} 
+                onLoading={setLoading} 
+              />
 
-                <TrendingSection />
-              </section>
-            )}
+              <TrendingSection />
+            </section>
+          )}
 
-            {activeTab === 'results' && parseData && (
-              <section className="results-layout animate-fade-in">
-                <div className="results-header">
-                  <div>
-                    <div className="results-eyebrow">Current transaction</div>
-                    <div className="results-title-row">
-                      <span className="transaction-pill">{parseData.transaction_type}</span>
-                      <h2>{parseData.transaction_type_label}</h2>
-                    </div>
+          {activeTab === 'results' && parseData && (
+            <section className="results-layout animate-fade-in">
+              <div className="results-header">
+                <div>
+                  <div className="results-eyebrow">Current transaction</div>
+                  <div className="results-title-row">
+                    <span className="transaction-pill">{parseData.transaction_type}</span>
+                    <h2>{parseData.transaction_type_label}</h2>
                   </div>
+                </div>
 
                   <div className="results-meta">
                     <div className="meta-block">
@@ -294,41 +292,41 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className={`results-workspace ${animOutDir ? 'ws-out-' + animOutDir : ''} ${animInDir ? 'ws-in-' + animInDir : ''} ${!animOutDir && !animInDir ? 'ws-initial' : ''}`}>
-                  {activeSection === 'validation' && (
-                    <div className="workspace-center-panel">
-                      <ValidationPanel
-                        validation={parseData.validation_result}
-                        rawContent={rawContent}
-                        initialRawContent={initialRawContent}
-                        onFix={handleFix}
-                        onFixAll={handleFixAll}
-                        onRawEdit={handleRawEdit}
-                      />
-                    </div>
-                  )}
-                  {activeSection === 'parsed' && (
-                    <div className="workspace-center-panel">
-                      <ParsedTreeViewer
-                        loops={parseData.parse_result?.loops || []}
-                        transactionType={parseData.transaction_type}
-                      />
-                    </div>
-                  )}
-                  {activeSection === 'summary' && parseData.transaction_type === '835' && remittance && (
-                    <div className="workspace-center-panel">
-                      <RemittanceSummary summary={remittance} />
-                    </div>
-                  )}
-                  {activeSection === 'summary' && parseData.transaction_type === '834' && enrollment && (
-                    <div className="workspace-center-panel">
-                      <EnrollmentDashboard summary={enrollment} />
-                    </div>
-                  )}
-                </div>
-              </section>
-            )}
-          </main>
+              <div className={`results-workspace ${animOutDir ? 'ws-out-' + animOutDir : ''} ${animInDir ? 'ws-in-' + animInDir : ''} ${!animOutDir && !animInDir ? 'ws-initial' : ''}`}>
+                {activeSection === 'validation' && (
+                  <div className="workspace-center-panel">
+                    <ValidationPanel
+                      validation={parseData.validation_result}
+                      rawContent={rawContent}
+                      initialRawContent={initialRawContent}
+                      onFix={handleFix}
+                      onFixAll={handleFixAll}
+                      onRawEdit={handleRawEdit}
+                    />
+                  </div>
+                )}
+                {activeSection === 'parsed' && (
+                  <div className="workspace-center-panel">
+                    <ParsedTreeViewer
+                      loops={parseData.parse_result?.loops || []}
+                      transactionType={parseData.transaction_type}
+                    />
+                  </div>
+                )}
+                {activeSection === 'summary' && parseData.transaction_type === '835' && remittance && (
+                  <div className="workspace-center-panel">
+                    <RemittanceSummary summary={remittance} />
+                  </div>
+                )}
+                {activeSection === 'summary' && parseData.transaction_type === '834' && enrollment && (
+                  <div className="workspace-center-panel">
+                    <EnrollmentDashboard summary={enrollment} />
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+        </main>
 
           <footer className="app-footer">
             <p>ClaimGuard hackathon build for EDI parsing, validation, and remediation workflows.</p>

@@ -91,6 +91,14 @@ const renderMessageContent = (content: string) => {
 };
 
 export default function AIChatPanel({ context: globalContext, parsedContext, onBack }: AIChatPanelProps) {
+  const [isLight, setIsLight] = useState(document.documentElement.getAttribute('data-theme') === 'light');
+  useEffect(() => {
+    const check = () => setIsLight(document.documentElement.getAttribute('data-theme') === 'light');
+    check(); // Sync on mount in case Navbar already set it
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
@@ -350,7 +358,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
   ];
 
   return (
-    <div className="flex h-[100dvh] w-full bg-[#050907] text-slate-200 font-sans fixed inset-0 z-50">
+    <div className={`flex h-[100dvh] w-full ${isLight ? 'bg-[#f3f2ef] text-[#191919]' : 'bg-[#050907] text-slate-200'} font-sans fixed inset-0 z-50`}>
       
       <input 
         type="file" 
@@ -361,12 +369,12 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
       />
 
       {/* Sidebar */}
-      <div className="w-[300px] flex-shrink-0 bg-[#161616] border-r border-[#222] py-6 flex flex-col m-3 rounded-[24px] z-20 overflow-hidden">
+      <div className={`w-[300px] flex-shrink-0 ${isLight ? 'bg-white border-r border-[#e0dfdc]' : 'bg-[#161616] border-r border-[#222]'} py-6 flex flex-col m-3 rounded-[24px] z-20 overflow-hidden`}>
         <div className="flex items-center gap-3 px-6 mb-6 cursor-pointer hover:opacity-80 transition" onClick={onBack}>
-          <div className="w-8 h-8 rounded-full bg-[#3d3d3d] flex items-center justify-center">
+          <div className={`w-8 h-8 rounded-full ${isLight ? 'bg-[#e8e6e1]' : 'bg-[#3d3d3d]'} flex items-center justify-center`}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
           </div>
-          <span className="font-semibold text-[15px] text-white tracking-tight">ClaimGuard Chats</span>
+          <span className={`font-semibold text-[15px] ${isLight ? 'text-[#1a1a2e]' : 'text-white'} tracking-tight`}>ClaimGuard Chats</span>
         </div>
 
         <div className="relative mb-6 px-4">
@@ -375,7 +383,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
             placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#2a2a2a] text-sm text-slate-300 rounded-xl py-2 pl-10 pr-4 outline-none focus:ring-1 focus:ring-[#4ade80]"
+            className={`w-full ${isLight ? 'bg-[#f3f2ef]' : 'bg-[#2a2a2a]'} text-sm ${isLight ? 'text-[#1a1a2e]' : 'text-slate-300'} rounded-xl py-2 pl-10 pr-4 outline-none focus:ring-1 focus:ring-[#4ade80]`}
           />
           <svg className="absolute left-7 top-2.5 text-slate-400 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
         </div>
@@ -391,7 +399,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                 <div 
                   key={folder} 
                   onClick={() => setActiveFolder(folder)}
-                  className={`group flex items-center justify-between px-4 py-2.5 rounded-r-lg cursor-pointer text-[14px] transition border-l-[3px] ${activeFolder === folder ? 'bg-[#1a2e22] border-[#4ade80] text-[#4ade80] font-medium' : 'border-transparent hover:bg-[#202020] text-slate-300'}`}
+                  className={`group flex items-center justify-between px-4 py-2.5 rounded-r-lg cursor-pointer text-[14px] transition border-l-[3px] ${activeFolder === folder ? `${isLight ? 'bg-[#e8f0ea]' : 'bg-[#1a2e22]'} border-[#4ade80] text-[#4ade80] font-medium` : `border-transparent ${isLight ? 'hover:bg-[#f3f2ef]' : 'hover:bg-[#202020]'} ${isLight ? 'text-[#666666]' : 'text-slate-300'}`}`}
                 >
                   <div className="flex items-center gap-3">
                     <svg className={`w-[18px] h-[18px] ${activeFolder === folder ? 'text-[#4ade80]' : 'text-slate-500 group-hover:text-slate-400'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -419,7 +427,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                   <div 
                     key={chat.id} 
                     onClick={() => selectChat(chat.id)}
-                    className={`group flex flex-col px-4 py-2.5 rounded-r-lg cursor-pointer relative transition-colors border-l-[3px] ${activeSessionId === chat.id ? 'bg-[#1a2e22] border-[#4ade80]' : 'border-transparent hover:bg-[#202020]'}`}
+                    className={`group flex flex-col px-4 py-2.5 rounded-r-lg cursor-pointer relative transition-colors border-l-[3px] ${activeSessionId === chat.id ? `${isLight ? 'bg-[#e8f0ea]' : 'bg-[#1a2e22]'} border-[#4ade80]` : `border-transparent ${isLight ? 'hover:bg-[#f3f2ef]' : 'hover:bg-[#202020]'}`}`}
                   >
                     <div className="flex items-center gap-3 text-[14px] text-slate-300">
                       <svg className={`w-[18px] h-[18px] shrink-0 ${activeSessionId === chat.id ? 'text-[#4ade80]' : 'text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -449,7 +457,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
 
         <button 
           onClick={createNewChat}
-          className="mt-4 mx-4 bg-[#4ade80] hover:bg-[#3dcc73] text-[#0a1a10] font-semibold py-3.5 px-4 rounded-[14px] flex items-center justify-between transition shadow-lg shadow-[#4ade80]/10"
+          className={`mt-4 mx-4 bg-[#4ade80] hover:bg-[#3dcc73] ${isLight ? 'text-white' : 'text-[#0a1a10]'} font-semibold py-3.5 px-4 rounded-[14px] flex items-center justify-between transition shadow-lg shadow-[#4ade80]/10`}
         >
           <span className="text-sm">New chat</span>
           <div className="bg-white/30 rounded text-black flex items-center justify-center w-5 h-5">
@@ -459,7 +467,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
       </div>
 
       {/* Main Container Area - No background gradient! purely dark as requested */}
-      <div className="flex-1 flex flex-col relative bg-[#121212] m-3 ml-0 rounded-[24px]">
+      <div className={`flex-1 flex flex-col relative ${isLight ? 'bg-white' : 'bg-[#121212]'} m-3 ml-0 rounded-[24px]`}>
         
         {/* Top header with active functional buttons */}
         <div className="h-16 flex items-center px-10 z-10 w-full pt-6 justify-between">
@@ -510,7 +518,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
         <div className="flex-1 overflow-y-auto px-8 pb-32 pt-12 z-10 w-full max-w-4xl mx-auto flex flex-col relative custom-scrollbar">
           {messages.length === 0 ? (
              <div className="flex-1 flex flex-col items-center justify-center -mt-10 w-full max-w-3xl mx-auto">
-              <div className="w-full bg-[#1b1c1b]/80 backdrop-blur-3xl rounded-[28px] p-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-white/5 relative mb-4 flex flex-col">
+              <div className={`w-full ${isLight ? 'bg-white border border-[#e0dfdc]' : 'bg-[#1b1c1b]/80'} backdrop-blur-3xl rounded-[28px] p-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] ${isLight ? '' : 'border border-white/5'} relative mb-4 flex flex-col`}>
                 
                 <div className="flex justify-center mb-6">
                   <div className="w-[42px] h-[42px] mask mask-squircle bg-[#22c55e] flex items-center justify-center text-black rounded-xl">
@@ -518,7 +526,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                   </div>
                 </div>
                 
-                <h1 className="text-[32px] font-medium text-center text-white mb-3 tracking-tight">How can I help you today?</h1>
+                <h1 className={`text-[32px] font-medium text-center ${isLight ? 'text-[#1a1a2e]' : 'text-white'} mb-3 tracking-tight`}>How can I help you today?</h1>
                 <p className="text-center text-[#9a9a9a] mb-8 max-w-[420px] mx-auto text-[13px] leading-relaxed">
                   Upload an EDI payload or ask a general query. Set the context tab below to prefix your request parameters.
                 </p>
@@ -557,7 +565,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Message ClaimGuard AI..."
-                    className="w-full bg-white text-slate-800 placeholder:text-slate-400 rounded-xl py-[14px] pl-[52px] pr-[60px] focus:outline-none shadow-lg text-[15px] font-medium"
+                    className={`w-full ${isLight ? 'bg-[#f3f2ef] text-[#1a1a2e] placeholder:text-[#999999]' : 'bg-white text-slate-800 placeholder:text-slate-400'} rounded-xl py-[14px] pl-[52px] pr-[60px] focus:outline-none shadow-lg text-[15px] font-medium`}
                   />
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     <button 
@@ -653,7 +661,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Message ClaimGuard AI..."
-                className={`w-full bg-white border border-[#444] text-slate-800 placeholder:text-slate-400 rounded-2xl py-[16px] pl-[52px] pr-16 focus:outline-none focus:border-[#4ade80] shadow-2xl text-[15px] font-medium ${localAttachment ? 'rounded-tl-none' : ''}`}
+                className={`w-full ${isLight ? 'bg-[#f3f2ef] border border-[#e0dfdc] text-[#1a1a2e] placeholder:text-[#999999]' : 'bg-white border border-[#444] text-slate-800 placeholder:text-slate-400'} rounded-2xl py-[16px] pl-[52px] pr-16 focus:outline-none focus:border-[#4ade80] shadow-2xl text-[15px] font-medium ${localAttachment ? 'rounded-tl-none' : ''}`}
               />
               <button 
                 onClick={() => sendMessage()}
@@ -672,9 +680,9 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
       </div>
 
       {isViewingContext && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
-          <div className="bg-[#121212] border border-[#333] rounded-[24px] w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden shadow-2xl relative animate-fade-in">
-            <div className="h-16 border-b border-[#333] flex items-center justify-between px-6 bg-[#1a1a1a]">
+        <div className={`fixed inset-0 z-[100] flex items-center justify-center ${isLight ? 'bg-white/60' : 'bg-black/60'} backdrop-blur-sm p-6`}>
+          <div className={`${isLight ? 'bg-white border-[#e0dfdc]' : 'bg-[#121212] border-[#333]'} border rounded-[24px] w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden shadow-2xl relative animate-fade-in`}>
+            <div className={`h-16 border-b ${isLight ? 'border-[#e0dfdc] bg-[#f3f2ef]' : 'border-[#333] bg-[#1a1a1a]'} flex items-center justify-between px-6`}>
               <h3 className="text-white font-semibold flex items-center gap-2">
                 <svg className="w-5 h-5 text-[#4ade80]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                 {localAttachment ? localAttachment.name : "Workspace EDI Context"}
@@ -693,12 +701,12 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto p-6 bg-[#0a0a0a]">
+            <div className={`flex-1 overflow-auto p-6 ${isLight ? 'bg-[#f4f5f7]' : 'bg-[#0a0a0a]'}`}>
               <pre className="text-[#4ade80] font-mono text-[13px] whitespace-pre-wrap leading-relaxed">
                 {(contextViewType === 'json' && (localAttachment ? localParsedContext : parsedContext)) ? (localAttachment ? localParsedContext : parsedContext) : effectiveContext}
               </pre>
             </div>
-            <div className="h-14 border-t border-[#333] flex items-center justify-end px-6 bg-[#1a1a1a]">
+            <div className={`h-14 border-t ${isLight ? 'border-[#e0dfdc] bg-[#f3f2ef]' : 'border-[#333] bg-[#1a1a1a]'} flex items-center justify-end px-6`}>
                <button 
                   onClick={() => setIsViewingContext(false)} 
                   className="bg-[#333] hover:bg-[#444] text-white px-5 py-2 rounded-xl text-sm font-medium transition"
