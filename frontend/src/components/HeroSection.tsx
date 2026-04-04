@@ -1,7 +1,8 @@
 import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
 import { ArrowRight } from 'lucide-react';
+import CardSwap, { Card } from './CardSwap';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface HeroSectionProps {
@@ -79,56 +80,79 @@ export default function HeroSection({ onScrollToUpload }: HeroSectionProps) {
       <div className="ambient-glow" />
 
       {/* Content */}
-      <div className="hero-content">
-        {/* Headline */}
-        <motion.div
-          initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <h1 className="hero-headline">
-            <span className="chrome-text">Smarter</span>
-            <br />
-            <span className="white-text">Parse, Validate & Repair</span>
-            <br />
-            <span className="white-text">Healthcare EDI Claims</span>
-          </h1>
-        </motion.div>
+      <div className="hero-container">
+        
+        <div className="hero-text-col">
+          {/* Headline */}
+          <div>
+            <h1 className="hero-headline">
+              <span className="chrome-text" style={{ display: 'block', marginBottom: '0.1em', fontSize: '1.25em' }}>Smarter</span>
+              <span className="white-text" style={{ display: 'block', whiteSpace: 'nowrap' }}>Parse, Validate & Repair</span>
+              <span className="white-text" style={{ display: 'block', whiteSpace: 'nowrap' }}>Healthcare EDI Claims</span>
+            </h1>
+          </div>
 
-        {/* Subtitle */}
-        <motion.p
-          className="hero-subtitle"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        >
-          AI-powered compliance in one calm workspace.
-        </motion.p>
+          {/* Subtitle */}
+          <p
+            className="hero-subtitle"
+            style={{ maxWidth: '420px', lineHeight: '1.6' }}
+          >
+            AI-powered compliance in one calm<br />workspace.
+          </p>
 
-        {/* CTA Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <CTAButton onClick={onScrollToUpload}>
-            <span className="btn-bg" />
-            <span className="btn-label">
-              Upload EDI File <ArrowRight size={16} />
-            </span>
-          </CTAButton>
-        </motion.div>
+          {/* CTA Button */}
+          <div>
+            <CTAButton onClick={onScrollToUpload}>
+              <span className="btn-bg" />
+              <span className="btn-label">
+                Upload EDI File <ArrowRight size={16} />
+              </span>
+            </CTAButton>
+          </div>
 
-        {/* Scroll Indicator */}
-        <motion.div
-          className="scroll-indicator"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 1.0 }}
-        >
+        </div>
+
+        <div className="hero-graphics-col">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, x: 20, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' }}
+            transition={{ duration: 1.2, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="md:mt-16 lg:mt-24"
+          >
+            <CardSwap
+              width={460}
+              height={200}
+              cardDistance={-30}
+              verticalDistance={48}
+              delay={2800}
+              pauseOnHover={true}
+              skewAmount={0}
+            >
+              <Card className="p-8 flex flex-col justify-center gap-4 bg-gradient-to-br from-[#121214] to-[#0a0a0c] rounded-3xl border border-[#4ade80]/30 shadow-[0_0_30px_rgba(74,222,128,0.08)]">
+                <div className="text-xs font-bold tracking-[0.25em] text-[#4ade80] bg-[#4ade80]/10 border border-[#4ade80]/20 px-4 py-1.5 rounded-full w-fit uppercase">CLAIMS</div>
+                <h3 className="text-3xl font-extrabold text-white m-0 tracking-tight">837P claim</h3>
+                <p className="text-[1.05rem] text-[#a0a0a0] m-0 leading-relaxed font-medium">Professional claim structure with payer and provider loops.</p>
+              </Card>
+              <Card className="p-8 flex flex-col justify-center gap-4 bg-gradient-to-br from-[#121214] to-[#0a0a0c] rounded-3xl border border-[#4ade80]/30 shadow-[0_0_30px_rgba(74,222,128,0.08)]">
+                <div className="text-xs font-bold tracking-[0.25em] text-[#4ade80] bg-[#4ade80]/10 border border-[#4ade80]/20 px-4 py-1.5 rounded-full w-fit uppercase">PAYMENTS</div>
+                <h3 className="text-3xl font-extrabold text-white m-0 tracking-tight">835 remittance</h3>
+                <p className="text-[1.05rem] text-[#a0a0a0] m-0 leading-relaxed font-medium">Payment and adjustment details for remit analysis.</p>
+              </Card>
+              <Card className="p-8 flex flex-col justify-center gap-4 bg-gradient-to-br from-[#121214] to-[#0a0a0c] rounded-3xl border border-[#4ade80]/30 shadow-[0_0_30px_rgba(74,222,128,0.08)]">
+                <div className="text-xs font-bold tracking-[0.25em] text-[#4ade80] bg-[#4ade80]/10 border border-[#4ade80]/20 px-4 py-1.5 rounded-full w-fit uppercase">MEMBERS</div>
+                <h3 className="text-3xl font-extrabold text-white m-0 tracking-tight">834 enrollment</h3>
+                <p className="text-[1.05rem] text-[#a0a0a0] m-0 leading-relaxed font-medium">Member additions, changes, and terminations.</p>
+              </Card>
+            </CardSwap>
+          </motion.div>
+        </div>
+
+        {/* Scroll Indicator - Absolute Centered */}
+        <div className="scroll-indicator">
           <span className="scroll-text">SCROLL</span>
           <div className="scroll-line" />
-        </motion.div>
+        </div>
+
       </div>
     </HeroWrapper>
   );
@@ -137,11 +161,6 @@ export default function HeroSection({ onScrollToUpload }: HeroSectionProps) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // STYLED COMPONENTS
 // ═══════════════════════════════════════════════════════════════════════════════
-
-const scrollPulse = keyframes`
-  0%, 100% { height: 40px; opacity: 0.4; }
-  50% { height: 60px; opacity: 0.8; }
-`;
 
 const HeroWrapper = styled.section`
   position: relative;
@@ -165,24 +184,59 @@ const HeroWrapper = styled.section`
     pointer-events: none;
   }
 
-
-
-  .hero-content {
+  .hero-container {
     position: relative;
     z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    text-align: center;
+    width: 100%;
+    max-width: 1300px;
     padding: 0 24px;
+    gap: 60px;
+
+    @media (min-width: 1024px) {
+      flex-direction: row;
+      justify-content: space-between;
+      gap: 100px;
+    }
+  }
+
+  .hero-text-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
     gap: 28px;
+    flex: 1;
+
+    @media (min-width: 1024px) {
+      align-items: flex-start;
+      text-align: left;
+    }
+  }
+
+  .hero-graphics-col {
+    flex: 1;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    perspective: 1200px;
+    width: 100%;
+    min-height: 480px;
+
+    @media (min-width: 1024px) {
+      justify-content: flex-end;
+      padding-right: 0px;
+    }
   }
 
   .hero-headline {
     margin: 0;
-    font-size: clamp(2.2rem, 5vw, 4.2rem);
-    font-weight: 700;
-    line-height: 1.1;
+    font-size: clamp(2.4rem, 4vw, 4.8rem);
+    font-weight: 800;
+    line-height: 1.05;
     letter-spacing: -0.03em;
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
@@ -210,19 +264,23 @@ const HeroWrapper = styled.section`
 
   .hero-subtitle {
     margin: 0;
-    font-size: clamp(0.95rem, 1.5vw, 1.15rem);
+    font-size: clamp(1.1rem, 1.8vw, 1.5rem);
     color: var(--muted);
     font-weight: 500;
     letter-spacing: 0.01em;
-    max-width: 400px;
+    max-width: 500px;
   }
 
   .scroll-indicator {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    margin-top: 32px;
+    z-index: 10;
   }
 
   .scroll-text {
@@ -243,7 +301,6 @@ const HeroWrapper = styled.section`
       rgba(160, 160, 170, 0.15),
       transparent
     );
-    animation: ${scrollPulse} 2.5s ease-in-out infinite;
   }
 `;
 
