@@ -1,4 +1,5 @@
 import { TrendingUp, ArrowRight, Eye, Download, Star, ShieldCheck, FileText, Users } from 'lucide-react';
+import { AnimatedItem } from './AnimatedItem';
 
 // ─── Data adapted for EDI ClaimGuard ─────────────────────────────────────────
 
@@ -125,11 +126,10 @@ export default function TrendingSection() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {trendingTransactions.map((tx, index) => (
+                  <AnimatedItem key={tx.code} index={index} delay={index * 0.1}>
                   <div
-                    key={tx.code}
-                    className="animate-slide-in group"
+                    className="group"
                     style={{
-                      animationDelay: `${index * 0.1}s`,
                       background: '#0f0f10',
                       border: '1px solid rgba(255, 255, 255, 0.07)',
                       borderRadius: 18,
@@ -205,6 +205,7 @@ export default function TrendingSection() {
                       className="group-hover:text-[#4ade80] group-hover:translate-x-1"
                     />
                   </div>
+                  </AnimatedItem>
                 ))}
 
                 {/* Footer Button */}
@@ -257,11 +258,10 @@ export default function TrendingSection() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: 'relative', zIndex: 1 }}>
                   {topFeatures.map((feature, index) => (
+                    <AnimatedItem key={feature.title} index={index} delay={(index + 4) * 0.1}>
                     <div
-                      key={feature.title}
-                      className="animate-slide-in"
+                      className=""
                       style={{
-                        animationDelay: `${(index + 4) * 0.1}s`,
                         background: 'rgba(0, 0, 0, 0.45)',
                         border: '1px solid rgba(255, 255, 255, 0.06)',
                         borderRadius: 16, padding: '14px 16px',
@@ -324,6 +324,7 @@ export default function TrendingSection() {
                         </div>
                       </div>
                     </div>
+                    </AnimatedItem>
                   ))}
                 </div>
 

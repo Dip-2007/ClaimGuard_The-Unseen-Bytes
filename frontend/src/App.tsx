@@ -1,5 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useRef } from 'react';
 import FileUpload from './components/FileUpload';
 import ParsedTreeViewer from './components/ParsedTreeViewer';
 import ValidationPanel from './components/ValidationPanel';
@@ -26,7 +25,12 @@ export default function App() {
   const [animOutDir, setAnimOutDir] = useState<'left' | 'right' | null>(null);
   const [animInDir, setAnimInDir] = useState<'left' | 'right' | null>(null);
   const animTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileUploadRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+
+  const handleScrollToUpload = useCallback(() => {
+    fileUploadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
 
   const handlePopupClick = useCallback((sectionId: SectionId, popupIndex: number) => {
     const dir = popupIndex === 0 ? 'left' : 'right';
@@ -43,11 +47,6 @@ export default function App() {
   const [initialRawContent, setInitialRawContent] = useState('');
   const [remittance, setRemittance] = useState<any>(null);
   const [enrollment, setEnrollment] = useState<any>(null);
-
-  // Reset scroll position when switching tabs
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [activeTab]);
 
   const handleFileProcessed = useCallback(async (data: any) => {
     setParseData(data);
@@ -107,12 +106,12 @@ export default function App() {
           setParseData((prev) =>
             prev
               ? {
-                  ...prev,
-                  validation_result: data.validation_result,
-                  parse_result: data.parse_result
-                    ? { ...data.parse_result, raw_content: data.corrected_content }
-                    : prev.parse_result,
-                }
+                ...prev,
+                validation_result: data.validation_result,
+                parse_result: data.parse_result
+                  ? { ...data.parse_result, raw_content: data.corrected_content }
+                  : prev.parse_result,
+              }
               : prev
           );
 
@@ -138,12 +137,12 @@ export default function App() {
         setParseData((prev) =>
           prev
             ? {
-                ...prev,
-                validation_result: data.validation_result,
-                parse_result: data.parse_result
-                  ? { ...data.parse_result, raw_content: data.corrected_content }
-                  : prev.parse_result,
-              }
+              ...prev,
+              validation_result: data.validation_result,
+              parse_result: data.parse_result
+                ? { ...data.parse_result, raw_content: data.corrected_content }
+                : prev.parse_result,
+            }
             : prev
         );
 
@@ -167,12 +166,12 @@ export default function App() {
         setParseData((prev) =>
           prev
             ? {
-                ...prev,
-                validation_result: data.validation_result,
-                parse_result: data.parse_result
-                  ? { ...data.parse_result, raw_content: data.corrected_content }
-                  : prev.parse_result,
-              }
+              ...prev,
+              validation_result: data.validation_result,
+              parse_result: data.parse_result
+                ? { ...data.parse_result, raw_content: data.corrected_content }
+                : prev.parse_result,
+            }
             : prev
         );
       }
@@ -221,10 +220,10 @@ export default function App() {
     return (
       <>
         <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} />
-        <AIChatPanel 
-           context={rawContent || undefined} 
-           parsedContext={parseData ? JSON.stringify(parseData.parse_result, null, 2) : undefined}
-           onBack={() => setActiveTab(parseData ? 'results' : 'upload')} 
+        <AIChatPanel
+          context={rawContent || undefined}
+          parsedContext={parseData ? JSON.stringify(parseData.parse_result, null, 2) : undefined}
+          onBack={() => setActiveTab(parseData ? 'results' : 'upload')}
         />
       </>
     );
@@ -232,58 +231,41 @@ export default function App() {
 
   return (
     <>
-    <div className="app-shell">
-      <div className="app-bg app-bg-primary" />
-      <div className="app-bg app-bg-secondary" />
-      <div className="app-bg app-bg-grid" />
+      <div className="app-shell">
+        <div className="app-bg app-bg-primary" />
+        <div className="app-bg app-bg-secondary" />
+        <div className="app-bg app-bg-grid" />
 
-      <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} />
+        <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} />
 
-      <div className="app-frame">
+        <div className="app-frame">
 
-        {loading && (
-          <div className="progress-rail" aria-label="Processing file">
-            <div className="progress-bar" />
-          </div>
-        )}
+          {loading && (
+            <div className="progress-rail" aria-label="Processing file">
+              <div className="progress-bar" />
+            </div>
+          )}
 
-        <main className="main-content">
-          <AnimatePresence mode="wait">
+          <main className="main-content">
             {activeTab === 'upload' && (
-              <motion.section 
-                key="upload"
-                className="upload-layout"
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <HeroSection />
+              <section className="upload-layout animate-fade-in">
+                <HeroSection onScrollToUpload={handleScrollToUpload} />
 
-                <FileUpload 
-                  onFileProcessed={handleFileProcessed} 
-                  onRawContent={(c) => { setRawContent(c); setInitialRawContent(c); }} 
-                  onLoading={setLoading} 
-                />
+                <div ref={fileUploadRef}>
+                  <FileUpload
+                    onFileProcessed={handleFileProcessed}
+                    onRawContent={(c) => { setRawContent(c); setInitialRawContent(c); }}
+                    onLoading={setLoading}
+                  />
+                </div>
 
                 <TrendingSection />
-              </motion.section>
+              </section>
             )}
 
             {activeTab === 'results' && parseData && (
-              <motion.section 
-                key="results"
-                className="results-layout"
-                initial={{ opacity: 0, y: 40, filter: 'blur(8px)' }}
-                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, y: -20, filter: 'blur(8px)' }}
-                transition={{ 
-                  duration: 0.4, 
-                  ease: "easeOut",
-                  opacity: { duration: 0.3 }
-                }}
-              >
-                <div className="results-header glass-card">
+              <section className="results-layout animate-fade-in">
+                <div className="results-header">
                   <div>
                     <div className="results-eyebrow">Current transaction</div>
                     <div className="results-title-row">
@@ -292,74 +274,70 @@ export default function App() {
                     </div>
                   </div>
 
-                <div className="results-meta">
-                  <div className="meta-block">
-                    <span>Segments</span>
-                    <strong>{parseData.parse_result?.segment_count ?? 0}</strong>
-                  </div>
-                  {parseData.parse_result?.sender_id && (
+                  <div className="results-meta">
                     <div className="meta-block">
-                      <span>Sender</span>
-                      <strong>{parseData.parse_result.sender_id}</strong>
+                      <span>Segments</span>
+                      <strong>{parseData.parse_result?.segment_count ?? 0}</strong>
+                    </div>
+                    {parseData.parse_result?.sender_id && (
+                      <div className="meta-block">
+                        <span>Sender</span>
+                        <strong>{parseData.parse_result.sender_id}</strong>
+                      </div>
+                    )}
+                    {parseData.parse_result?.receiver_id && (
+                      <div className="meta-block">
+                        <span>Receiver</span>
+                        <strong>{parseData.parse_result.receiver_id}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className={`results-workspace ${animOutDir ? 'ws-out-' + animOutDir : ''} ${animInDir ? 'ws-in-' + animInDir : ''} ${!animOutDir && !animInDir ? 'ws-initial' : ''}`}>
+                  {activeSection === 'validation' && (
+                    <div className="workspace-center-panel">
+                      <ValidationPanel
+                        validation={parseData.validation_result}
+                        rawContent={rawContent}
+                        initialRawContent={initialRawContent}
+                        onFix={handleFix}
+                        onFixAll={handleFixAll}
+                        onRawEdit={handleRawEdit}
+                      />
                     </div>
                   )}
-                  {parseData.parse_result?.receiver_id && (
-                    <div className="meta-block">
-                      <span>Receiver</span>
-                      <strong>{parseData.parse_result.receiver_id}</strong>
+                  {activeSection === 'parsed' && (
+                    <div className="workspace-center-panel">
+                      <ParsedTreeViewer
+                        loops={parseData.parse_result?.loops || []}
+                        transactionType={parseData.transaction_type}
+                      />
+                    </div>
+                  )}
+                  {activeSection === 'summary' && parseData.transaction_type === '835' && remittance && (
+                    <div className="workspace-center-panel">
+                      <RemittanceSummary summary={remittance} />
+                    </div>
+                  )}
+                  {activeSection === 'summary' && parseData.transaction_type === '834' && enrollment && (
+                    <div className="workspace-center-panel">
+                      <EnrollmentDashboard summary={enrollment} />
                     </div>
                   )}
                 </div>
-              </div>
+              </section>
+            )}
+          </main>
 
-              <div className={`results-workspace ${animOutDir ? 'ws-out-' + animOutDir : ''} ${animInDir ? 'ws-in-' + animInDir : ''} ${!animOutDir && !animInDir ? 'ws-initial' : ''}`}>
-                {activeSection === 'validation' && (
-                  <div className="workspace-center-panel">
-                    <ValidationPanel
-                      validation={parseData.validation_result}
-                      rawContent={rawContent}
-                      initialRawContent={initialRawContent}
-                      onFix={handleFix}
-                      onFixAll={handleFixAll}
-                      onRawEdit={handleRawEdit}
-                    />
-                  </div>
-                )}
-                {activeSection === 'parsed' && (
-                  <div className="workspace-center-panel">
-                    <ParsedTreeViewer
-                      loops={parseData.parse_result?.loops || []}
-                      transactionType={parseData.transaction_type}
-                    />
-                  </div>
-                )}
-                {activeSection === 'summary' && parseData.transaction_type === '835' && remittance && (
-                  <div className="workspace-center-panel">
-                    <RemittanceSummary summary={remittance} />
-                  </div>
-                )}
-                {activeSection === 'summary' && parseData.transaction_type === '834' && enrollment && (
-                  <div className="workspace-center-panel">
-                    <EnrollmentDashboard summary={enrollment} />
-                  </div>
-                )}
-              </div>
-
-              {parseData.transaction_type === '835' && remittance && <RemittanceSummary summary={remittance} />}
-              {parseData.transaction_type === '834' && enrollment && <EnrollmentDashboard summary={enrollment} />}
-            </motion.section>
-          )}
-          </AnimatePresence>
-        </main>
-
-        <footer className="app-footer">
-          <p>ClaimGuard hackathon build for EDI parsing, validation, and remediation workflows.</p>
-        </footer>
+          <footer className="app-footer">
+            <p>ClaimGuard hackathon build for EDI parsing, validation, and remediation workflows.</p>
+          </footer>
+        </div>
       </div>
-    </div>
 
       {activeTab === 'results' && parseData && (() => {
-        const allSections: {id: SectionId; label: string; content: React.ReactNode}[] = [
+        const allSections: { id: SectionId; label: string; content: React.ReactNode }[] = [
           { id: 'validation', label: 'Validation Results', content: <ValidationPanel validation={parseData.validation_result} rawContent={rawContent} initialRawContent={initialRawContent} onFix={handleFix} onFixAll={handleFixAll} onRawEdit={handleRawEdit} /> },
           { id: 'parsed', label: 'Parsed Structure', content: <ParsedTreeViewer loops={parseData.parse_result?.loops || []} transactionType={parseData.transaction_type} /> },
         ];

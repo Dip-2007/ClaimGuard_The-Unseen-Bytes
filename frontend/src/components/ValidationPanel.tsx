@@ -1,10 +1,33 @@
-import { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
+import { motion, useInView } from 'framer-motion';
 
 const formatEdi = (content: string) => {
   if (!content || content.length < 106) return content;
   const term = content[105];
   const segments = content.split(term).map(s => s.trim()).filter(s => s.length > 0);
   return segments.join(term + '\n') + term + '\n';
+};
+
+interface AnimatedItemProps {
+  children: React.ReactNode;
+  delay?: number;
+  index: number;
+}
+
+const AnimatedItem: React.FC<AnimatedItemProps> = ({ children, delay = 0, index }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { amount: 0.1, once: false });
+  return (
+    <motion.div
+      ref={ref}
+      data-index={index}
+      initial={{ scale: 0.7, opacity: 0 }}
+      animate={inView ? { scale: 1, opacity: 1 } : { scale: 0.7, opacity: 0 }}
+      transition={{ duration: 0.2, delay }}
+    >
+      {children}
+    </motion.div>
+  );
 };
 
 interface ValidationError {
@@ -55,6 +78,16 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
   const [loadingAi, setLoadingAi] = useState<Record<string, boolean>>({});
   const [isEditingRaw, setIsEditingRaw] = useState(false);
   const [editableRawContent, setEditableRawContent] = useState('');
+
+  const [topGradientOpacity, setTopGradientOpacity] = useState<number>(0);
+  const [bottomGradientOpacity, setBottomGradientOpacity] = useState<number>(1);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
+    setTopGradientOpacity(Math.min(scrollTop / 50, 1));
+    const bottomDistance = scrollHeight - (scrollTop + clientHeight);
+    setBottomGradientOpacity(scrollHeight <= clientHeight ? 0 : Math.min(bottomDistance / 50, 1));
+  };
 
   const gutterRef = useRef<HTMLDivElement>(null);
 
@@ -260,14 +293,16 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
         ))}
       </div>
 
-      <div className="validation-list">
+      <div className="relative w-full">
+      <div className="validation-list" onScroll={handleScroll}>
         {filtered.length === 0 ? (
           <div className="surface-panel empty-state">
             {validation.is_valid ? 'No validation issues found.' : 'No items match the selected filter.'}
           </div>
         ) : (
           filtered.map((err, index) => (
-            <article key={`${err.error_id}-${index}`} className="validation-item">
+            <AnimatedItem key={`${err.error_id}-${index}`} delay={0.1} index={index}>
+            <article className="validation-item">
               <div className="validation-item-head">
                 <div className="flex gap-3">
                   <span className={`severity-dot ${severityClass[err.severity] || 'severity-info'}`} />
@@ -398,8 +433,22 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
                 </div>
               </div>
             </article>
+            </AnimatedItem>
           ))
         )}
+      </div>
+      {filtered.length > 0 && (
+        <>
+          <div
+            className="absolute top-0 left-0 right-0 h-[50px] bg-gradient-to-b from-[#0a0f1c] to-transparent pointer-events-none transition-opacity duration-300 ease rounded-t-[20px] z-[5]"
+            style={{ opacity: topGradientOpacity }}
+          ></div>
+          <div
+            className="absolute bottom-0 left-0 right-0 h-[100px] bg-gradient-to-t from-[#0a0f1c] to-transparent pointer-events-none transition-opacity duration-300 ease rounded-b-[20px] z-[5]"
+            style={{ opacity: bottomGradientOpacity }}
+          ></div>
+        </>
+      )}
       </div>
       </>
       )}

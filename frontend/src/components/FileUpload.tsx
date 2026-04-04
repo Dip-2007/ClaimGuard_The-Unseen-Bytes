@@ -2,6 +2,7 @@ import { useCallback, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import styled, { keyframes, css } from 'styled-components';
 import GlareHover from './GlareHover';
+import { AnimatedItem } from './AnimatedItem';
 
 interface FileUploadProps {
   onFileProcessed: (data: any) => void;
@@ -555,20 +556,19 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
 
         <SampleGrid>
           {sampleFiles.map((sample, i) => (
+            <AnimatedItem key={sample.name} index={i} delay={i * 0.12} className="h-full">
             <SampleCard
               as={motion.button}
-              key={sample.name}
               onClick={() => loadSample(sample.name)}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.12, duration: 0.5 }}
               whileHover={{ y: -5, borderColor: 'rgba(84, 208, 255, 0.4)', transition: { duration: 0.3 } }}
               whileTap={{ scale: 0.97 }}
+              style={{ width: '100%', height: '100%' }}
             >
               <span className="eyebrow">{sample.accent}</span>
               <strong>{sample.label}</strong>
               <p>{sample.description}</p>
             </SampleCard>
+            </AnimatedItem>
           ))}
         </SampleGrid>
       </SampleSection>
