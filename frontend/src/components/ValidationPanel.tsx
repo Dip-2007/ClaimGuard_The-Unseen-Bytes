@@ -1,5 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, useInView } from 'framer-motion';
+import { Maximize2, Minimize2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 const formatEdi = (content: string) => {
   if (!content || content.length < 106) return content;
@@ -71,6 +73,7 @@ const severityBadgeClass: Record<string, string> = {
 };
 
 export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit, rawContent, initialRawContent }: ValidationPanelProps) {
+  const [isMaximized, setIsMaximized] = useState(false);
   const [filter, setFilter] = useState<'all' | 'error' | 'warning' | 'info'>('all');
   const [manualFixId, setManualFixId] = useState<string | null>(null);
   const [manualFixValue, setManualFixValue] = useState<string>('');
@@ -134,11 +137,11 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
   const filtered = validation.errors.filter((error) => filter === 'all' || error.severity === filter);
   const fixableCount = validation.errors.filter((error) => error.fixable).length;
 
-  return (
-    <section className="glass-card panel-card">
-      <div className="panel-header">
+  const renderedPanel = (
+    <section className={`glass-card panel-card flex flex-col transition-all duration-300 ${isMaximized ? 'w-full max-w-[1400px] h-[90vh] shadow-2xl relative z-10 overflow-y-auto' : ''}`}>
+      <div className="panel-header shrink-0">
         <div>
-          <h3 className="panel-title">
+          <h3 className="panel-title font-bold">
             Validation results
             <span className={`badge ${validation.is_valid ? 'badge-success' : 'badge-warning'}`}>
               {validation.is_valid ? 'Passing' : 'Needs attention'}
@@ -150,17 +153,40 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
           {!isEditingRaw && (
             <button 
               onClick={() => { setEditableRawContent(formatEdi(rawContent)); setIsEditingRaw(true); }} 
-              className="btn-secondary px-4 py-3 text-sm flex items-center gap-2 border-indigo-500/30 text-indigo-300"
+              className="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5 border-indigo-500/30 text-indigo-300"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
               Edit Raw Source
             </button>
           )}
           {fixableCount > 0 && !isEditingRaw && (
-            <button onClick={onFixAll} className="btn-success px-4 py-3 text-sm">
+            <button 
+              onClick={onFixAll} 
+              style={{
+                background: 'rgba(74, 222, 128, 0.1)', border: '1px solid rgba(74, 222, 128, 0.2)',
+                borderRadius: 10, padding: '6px 12px', color: '#4ade80', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', fontWeight: 700,
+                fontFamily: 'inherit', transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(74, 222, 128, 0.18)';
+                e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.35)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(74, 222, 128, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.2)';
+              }}
+            >
               Fix all ({fixableCount})
             </button>
           )}
+          <button
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+            title={isMaximized ? "Restore view" : "Maximize view"}
+          >
+            {isMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
         </div>
       </div>
 
@@ -262,28 +288,28 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
         </div>
       ) : (
         <>
-          <div className="stat-grid mb-5">
-        <div className="summary-stat surface-panel">
-          <span className="text-muted">Errors</span>
-          <strong className="text-red">{validation.error_count}</strong>
-          <small>Blocking issues</small>
-        </div>
-        <div className="summary-stat surface-panel">
-          <span className="text-muted">Warnings</span>
-          <strong className="text-amber">{validation.warning_count}</strong>
-          <small>Review recommended</small>
-        </div>
-        <div className="summary-stat surface-panel">
-          <span className="text-muted">Info</span>
-          <strong className="text-accent">{validation.info_count}</strong>
-          <small>Helpful notes</small>
-        </div>
-        <div className="summary-stat surface-panel">
-          <span className="text-muted">Fixable</span>
-          <strong className="text-green">{fixableCount}</strong>
-          <small>Automatic candidates</small>
-        </div>
-      </div>
+          <div className="flex justify-center items-center divide-x divide-gray-500/30 mb-8 py-2 mt-2 w-full">
+            <div className="px-10 flex flex-col items-center text-center gap-1">
+              <span className="text-white font-medium text-[1.05rem]">Errors</span>
+              <strong className="text-red text-2xl font-bold leading-tight block">{validation.error_count}</strong>
+              <span className="text-gray-400 text-[0.9rem]">Blocking issues</span>
+            </div>
+            <div className="px-10 flex flex-col items-center text-center gap-1">
+              <span className="text-white font-medium text-[1.05rem]">Warnings</span>
+              <strong className="text-amber text-2xl font-bold leading-tight block">{validation.warning_count}</strong>
+              <span className="text-gray-400 text-[0.9rem]">Review recommended</span>
+            </div>
+            <div className="px-10 flex flex-col items-center text-center gap-1">
+              <span className="text-white font-medium text-[1.05rem]">Info</span>
+              <strong className="text-accent text-2xl font-bold leading-tight block">{validation.info_count}</strong>
+              <span className="text-gray-400 text-[0.9rem]">Helpful notes</span>
+            </div>
+            <div className="px-10 flex flex-col items-center text-center gap-1">
+              <span className="text-white font-medium text-[1.05rem]">Fixable</span>
+              <strong className="text-green text-2xl font-bold leading-tight block">{fixableCount}</strong>
+              <span className="text-gray-400 text-[0.9rem]">Automatic candidates</span>
+            </div>
+          </div>
 
       <div className="toggle-group mb-5 w-fit flex-wrap">
         {(['all', 'error', 'warning', 'info'] as const).map((value) => (
@@ -302,26 +328,43 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
         ) : (
           filtered.map((err, index) => (
             <AnimatedItem key={`${err.error_id}-${index}`} delay={0.1} index={index}>
-            <article className="validation-item">
-              <div className="validation-item-head">
-                <div className="flex gap-3">
-                  <span className={`severity-dot ${severityClass[err.severity] || 'severity-info'}`} />
-                  <div>
-                    <div className="validation-meta">
-                      <span className={`badge ${severityBadgeClass[err.severity] || 'badge-info'}`}>{err.severity}</span>
-                      <span className="status-chip subtle">{err.error_id}</span>
-                      <span className="status-chip subtle">{err.segment_id}{err.element_index > 0 ? String(err.element_index).padStart(2, '0') : ''}</span>
-                      {err.loop_location && <span className="status-chip subtle">Loop {err.loop_location}</span>}
-                      {err.line_number > 0 && <span className="status-chip subtle">Line {err.line_number}</span>}
+            <article className="validation-item mb-5" style={{ padding: '24px' }}>
+              <div className="validation-item-head flex justify-between gap-6">
+                <div className="flex gap-4 flex-1">
+                  <span className={`severity-dot mt-1.5 shrink-0 ${severityClass[err.severity] || 'severity-info'}`} />
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                      <span className={`badge px-4 py-1.5 ${severityBadgeClass[err.severity] || 'badge-info'}`}>{err.severity}</span>
+                      <span className="status-chip px-4 py-1.5 subtle">{err.error_id}</span>
+                      <span className="status-chip px-4 py-1.5 subtle">{err.segment_id}{err.element_index > 0 ? String(err.element_index).padStart(2, '0') : ''}</span>
+                      {err.loop_location && <span className="status-chip px-4 py-1.5 subtle">Loop {err.loop_location}</span>}
+                      {err.line_number > 0 && <span className="status-chip px-4 py-1.5 subtle">Line {err.line_number}</span>}
                     </div>
-                    <p className="mb-2 text-sm leading-6 text-slate-100">{err.message}</p>
-                    {err.suggestion && <p className="text-sm leading-6 text-slate-400">Suggestion: {err.suggestion}</p>}
+                    <p className="mb-3 text-[0.95rem] leading-relaxed text-slate-100">{err.message}</p>
+                    {err.suggestion && <p className="text-[0.95rem] leading-relaxed text-slate-400">Suggestion: {err.suggestion}</p>}
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end shrink-0">
+                <div className="flex flex-col items-end shrink-0 ml-4">
                   {err.fixable ? (
-                    <button onClick={() => onFix(err.error_id, err.fix_value, err.line_number, err.element_index)} className="btn-primary px-4 py-2 text-sm shrink-0">
+                    <button 
+                      onClick={() => onFix(err.error_id, err.fix_value, err.line_number, err.element_index)} 
+                      style={{
+                        background: 'rgba(74, 222, 128, 0.1)', border: '1px solid rgba(74, 222, 128, 0.2)',
+                        borderRadius: 14, padding: '9px 14px', color: '#4ade80', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', fontWeight: 700,
+                        fontFamily: 'inherit', transition: 'all 0.2s',
+                        whiteSpace: 'nowrap'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = 'rgba(74, 222, 128, 0.18)';
+                        e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.35)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'rgba(74, 222, 128, 0.1)';
+                        e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.2)';
+                      }}
+                    >
                       Apply fix
                     </button>
                   ) : err.element_index > 0 && err.severity !== 'info' ? (
@@ -424,7 +467,7 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
                       </span>
                       <button 
                         onClick={() => { setEditableRawContent(formatEdi(rawContent)); setIsEditingRaw(true); }} 
-                        className="btn-secondary px-4 py-2 text-sm border-amber/30 hover:border-amber/60 text-amber shrink-0"
+                        className="btn-secondary px-3 py-1.5 text-xs border-amber/30 hover:border-amber/60 text-amber shrink-0"
                       >
                         Edit Raw Source
                       </button>
@@ -454,4 +497,16 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
       )}
     </section>
   );
+
+  if (isMaximized) {
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-fade-in">
+        <div className="absolute inset-0 cursor-pointer" onClick={() => setIsMaximized(false)} />
+        {renderedPanel}
+      </div>,
+      document.body
+    );
+  }
+
+  return renderedPanel;
 }
