@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import FileUpload from './components/FileUpload';
 import ParsedTreeViewer from './components/ParsedTreeViewer';
 import ValidationPanel from './components/ValidationPanel';
@@ -22,9 +23,6 @@ interface ParseData {
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('upload');
   const [activeSection, setActiveSection] = useState<SectionId>('validation');
-  const [animOutDir, setAnimOutDir] = useState<'left' | 'right' | null>(null);
-  const [animInDir, setAnimInDir] = useState<'left' | 'right' | null>(null);
-  const animTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileUploadRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
 
@@ -32,15 +30,8 @@ export default function App() {
     fileUploadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
-  const handlePopupClick = useCallback((sectionId: SectionId, popupIndex: number) => {
-    const dir = popupIndex === 0 ? 'left' : 'right';
-    setAnimOutDir(dir);
-    if (animTimeout.current) clearTimeout(animTimeout.current);
-    animTimeout.current = setTimeout(() => {
-      setActiveSection(sectionId);
-      setAnimOutDir(null);
-      setAnimInDir(dir);
-    }, 300);
+  const handlePopupClick = useCallback((sectionId: SectionId) => {
+    setActiveSection(sectionId);
   }, []);
   const [parseData, setParseData] = useState<ParseData | null>(null);
   const [rawContent, setRawContent] = useState('');
@@ -292,9 +283,9 @@ export default function App() {
                   </div>
                 </div>
 
-              <div className={`results-workspace ${animOutDir ? 'ws-out-' + animOutDir : ''} ${animInDir ? 'ws-in-' + animInDir : ''} ${!animOutDir && !animInDir ? 'ws-initial' : ''}`}>
+              <div className="results-workspace">
                 {activeSection === 'validation' && (
-                  <div className="workspace-center-panel">
+                  <motion.div layoutId="workspace-validation" className="workspace-center-panel" transition={{ type: 'spring', stiffness: 90, damping: 20, mass: 1.2 }}>
                     <ValidationPanel
                       validation={parseData.validation_result}
                       rawContent={rawContent}
@@ -303,25 +294,25 @@ export default function App() {
                       onFixAll={handleFixAll}
                       onRawEdit={handleRawEdit}
                     />
-                  </div>
+                  </motion.div>
                 )}
                 {activeSection === 'parsed' && (
-                  <div className="workspace-center-panel">
+                  <motion.div layoutId="workspace-parsed" className="workspace-center-panel" transition={{ type: 'spring', stiffness: 90, damping: 20, mass: 1.2 }}>
                     <ParsedTreeViewer
                       loops={parseData.parse_result?.loops || []}
                       transactionType={parseData.transaction_type}
                     />
-                  </div>
+                  </motion.div>
                 )}
                 {activeSection === 'summary' && parseData.transaction_type === '835' && remittance && (
-                  <div className="workspace-center-panel">
+                  <motion.div layoutId="workspace-summary" className="workspace-center-panel" transition={{ type: 'spring', stiffness: 90, damping: 20, mass: 1.2 }}>
                     <RemittanceSummary summary={remittance} />
-                  </div>
+                  </motion.div>
                 )}
                 {activeSection === 'summary' && parseData.transaction_type === '834' && enrollment && (
-                  <div className="workspace-center-panel">
+                  <motion.div layoutId="workspace-summary" className="workspace-center-panel" transition={{ type: 'spring', stiffness: 90, damping: 20, mass: 1.2 }}>
                     <EnrollmentDashboard summary={enrollment} />
-                  </div>
+                  </motion.div>
                 )}
               </div>
             </section>
@@ -334,6 +325,7 @@ export default function App() {
         </div>
       </div>
 
+      <AnimatePresence>
       {activeTab === 'results' && parseData && (() => {
         const allSections: { id: SectionId; label: string; content: React.ReactNode }[] = [
           { id: 'validation', label: 'Validation Results', content: <ValidationPanel validation={parseData.validation_result} rawContent={rawContent} initialRawContent={initialRawContent} onFix={handleFix} onFixAll={handleFixAll} onRawEdit={handleRawEdit} /> },
@@ -346,18 +338,24 @@ export default function App() {
         }
         const inactive = allSections.filter(s => s.id !== activeSection);
         return inactive.map((section, index) => (
-          <div
+          <motion.div
+            layoutId={`workspace-${section.id}`}
             key={section.id}
             className={`workspace-popup ${index === 0 ? 'workspace-popup-left' : 'workspace-popup-right'}`}
-            onClick={() => handlePopupClick(section.id, index)}
+            onClick={() => handlePopupClick(section.id)}
+            transition={{ type: 'spring', stiffness: 90, damping: 20, mass: 1.2 }}
+            whileHover={{ y: -6, scale: 1.03, boxShadow: '0 20px 40px rgba(0,0,0,0.6), 0 0 30px rgba(74,222,128,0.2)' }}
+            whileTap={{ scale: 0.94 }}
+            style={{ perspective: 1000, transformOrigin: 'bottom center', zIndex: 100 }}
           >
             <div className="popup-title">{section.label}</div>
             <div className="popup-preview-content">
               {section.content}
             </div>
-          </div>
+          </motion.div>
         ));
       })()}
+      </AnimatePresence>
     </>
   );
 }

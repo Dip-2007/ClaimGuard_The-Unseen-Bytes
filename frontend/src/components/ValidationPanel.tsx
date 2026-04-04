@@ -440,12 +440,12 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
       {filtered.length > 0 && (
         <>
           <div
-            className="absolute top-0 left-0 right-0 h-[50px] bg-gradient-to-b from-[#0a0f1c] to-transparent pointer-events-none transition-opacity duration-300 ease rounded-t-[20px] z-[5]"
-            style={{ opacity: topGradientOpacity }}
+            className="absolute top-0 left-0 right-0 h-[50px] pointer-events-none transition-opacity duration-300 ease rounded-t-[20px] z-[5]"
+            style={{ opacity: topGradientOpacity, background: 'linear-gradient(to bottom, var(--bg-elevated) 0%, transparent 100%)' }}
           ></div>
           <div
-            className="absolute bottom-0 left-0 right-0 h-[100px] bg-gradient-to-t from-[#0a0f1c] to-transparent pointer-events-none transition-opacity duration-300 ease rounded-b-[20px] z-[5]"
-            style={{ opacity: bottomGradientOpacity }}
+            className="absolute bottom-0 left-0 right-0 h-[100px] pointer-events-none transition-opacity duration-300 ease rounded-b-[20px] z-[5]"
+            style={{ opacity: bottomGradientOpacity, background: 'linear-gradient(to top, var(--bg-elevated) 0%, transparent 100%)' }}
           ></div>
         </>
       )}
