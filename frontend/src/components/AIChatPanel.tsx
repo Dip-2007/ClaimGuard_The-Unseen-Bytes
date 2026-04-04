@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import MagicBento from './MagicBento';
 import type { BentoCardProps } from './MagicBento';
 
@@ -28,36 +30,64 @@ interface AIChatPanelProps {
 type FolderType = 'All Chats' | 'Bookmarked' | 'With Attachments';
 
 const renderMessageContent = (content: string) => {
-  const blocks = content.split(/(```[\s\S]*?```)/g);
-  return blocks.map((block, i) => {
-    if (block.startsWith('```') && block.endsWith('```')) {
-      const codeLines = block.split('\n');
-      codeLines.shift(); // remove ```lang
-      codeLines.pop(); // remove ```
-      const codeText = codeLines.join('\n');
-      return (
-        <div key={i} className="my-5 bg-[#14321c] rounded-2xl p-5 border border-[#1b4a2a] shadow-lg relative group">
-          <button 
-            className="absolute top-4 right-4 text-[#4ade80] opacity-0 group-hover:opacity-100 transition hover:text-white bg-[#112415] p-1.5 rounded-md border border-[#1b4a2a]"
-            onClick={() => navigator.clipboard.writeText(codeText)}
-            title="Copy Code"
-          >
-             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
-          </button>
-          <pre className="font-mono text-[13px] text-[#4ade80] overflow-x-auto whitespace-pre-wrap leading-relaxed">{codeText}</pre>
-        </div>
-      );
-    }
-    return (
-      <span 
-         key={i} 
-         className="whitespace-pre-wrap leading-[1.8]"
-         dangerouslySetInnerHTML={{
-           __html: block.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>').replace(/\n/g, '<br />'),
-         }}
-      />
-    );
-  });
+  return (
+    <div className="ai-markdown-content">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }) => <h1 className="text-xl font-bold text-white mt-4 mb-2 border-b border-slate-700 pb-2">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-lg font-bold text-white mt-4 mb-2">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-base font-semibold text-slate-200 mt-3 mb-1.5">{children}</h3>,
+          h4: ({ children }) => <h4 className="text-sm font-semibold text-slate-300 mt-2 mb-1">{children}</h4>,
+          p: ({ children }) => <p className="mb-3 leading-[1.8] text-slate-300">{children}</p>,
+          strong: ({ children }) => <strong className="text-white font-semibold">{children}</strong>,
+          em: ({ children }) => <em className="text-slate-400 italic">{children}</em>,
+          ul: ({ children }) => <ul className="list-disc ml-5 mb-3 space-y-1 text-slate-300">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal ml-5 mb-3 space-y-1 text-slate-300">{children}</ol>,
+          li: ({ children }) => <li className="leading-[1.7]">{children}</li>,
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-3 border-slate-500 pl-4 my-3 text-slate-400 italic bg-slate-800/30 py-2 rounded-r-lg">
+              {children}
+            </blockquote>
+          ),
+          a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline hover:text-blue-300 transition">{children}</a>,
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-3 rounded-xl border border-slate-700">
+              <table className="w-full text-sm">{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => <thead className="bg-slate-800 text-slate-300 font-semibold">{children}</thead>,
+          tbody: ({ children }) => <tbody className="divide-y divide-slate-700/50">{children}</tbody>,
+          tr: ({ children }) => <tr className="hover:bg-slate-800/40 transition">{children}</tr>,
+          th: ({ children }) => <th className="px-4 py-2.5 text-left text-xs uppercase tracking-wider text-slate-400">{children}</th>,
+          td: ({ children }) => <td className="px-4 py-2.5 text-slate-300">{children}</td>,
+          hr: () => <hr className="border-slate-700 my-4" />,
+          code: ({ className, children }) => {
+            const isInline = !className;
+            if (isInline) {
+              return <code className="bg-slate-800 text-slate-200 px-1.5 py-0.5 rounded text-[13px] font-mono border border-slate-700">{children}</code>;
+            }
+            const codeText = String(children).replace(/\n$/, '');
+            return (
+              <div className="my-4 bg-[#1a1a2e] rounded-2xl p-5 border border-slate-700 shadow-lg relative group">
+                <button
+                  className="absolute top-4 right-4 text-slate-400 opacity-0 group-hover:opacity-100 transition hover:text-white bg-slate-800 p-1.5 rounded-md border border-slate-700"
+                  onClick={() => navigator.clipboard.writeText(codeText)}
+                  title="Copy Code"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                </button>
+                <pre className="font-mono text-[13px] text-slate-300 overflow-x-auto whitespace-pre-wrap leading-relaxed">{codeText}</pre>
+              </div>
+            );
+          },
+          pre: ({ children }) => <>{children}</>,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
 };
 
 export default function AIChatPanel({ context: globalContext, parsedContext, onBack }: AIChatPanelProps) {

@@ -65,13 +65,19 @@ export default function App() {
   }, []);
 
   const handleFix = useCallback(
-    async (errorId: string, fixValue: string) => {
+    async (errorId: string, fixValue: string, lineNumber: number = 0, elementIndex: number = -1) => {
       if (!rawContent) return;
       try {
         const res = await fetch('/api/fix', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ error_id: errorId, fix_value: fixValue, raw_content: rawContent }),
+          body: JSON.stringify({
+            error_id: errorId,
+            fix_value: fixValue,
+            raw_content: rawContent,
+            line_number: lineNumber,
+            element_index: elementIndex,
+          }),
         });
         const data = await res.json();
         if (data.corrected_content) {
@@ -81,7 +87,9 @@ export default function App() {
               ? {
                   ...prev,
                   validation_result: data.validation_result,
-                  parse_result: data.parse_result || prev.parse_result,
+                  parse_result: data.parse_result
+                    ? { ...data.parse_result, raw_content: data.corrected_content }
+                    : prev.parse_result,
                 }
               : prev
           );
@@ -110,7 +118,9 @@ export default function App() {
             ? {
                 ...prev,
                 validation_result: data.validation_result,
-                parse_result: data.parse_result || prev.parse_result,
+                parse_result: data.parse_result
+                  ? { ...data.parse_result, raw_content: data.corrected_content }
+                  : prev.parse_result,
               }
             : prev
         );
@@ -137,7 +147,9 @@ export default function App() {
             ? {
                 ...prev,
                 validation_result: data.validation_result,
-                parse_result: data.parse_result || prev.parse_result,
+                parse_result: data.parse_result
+                  ? { ...data.parse_result, raw_content: data.corrected_content }
+                  : prev.parse_result,
               }
             : prev
         );

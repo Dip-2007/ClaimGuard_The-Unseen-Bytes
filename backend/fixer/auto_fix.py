@@ -12,9 +12,15 @@ def apply_fix(
     raw_content: str,
     error_id: str,
     fix_value: str,
+    target_line: int = 0,
+    target_elem: int = -1,
 ) -> tuple[str, str]:
     """
     Apply a single fix to the raw EDI content.
+
+    target_line / target_elem come from the frontend request and help
+    disambiguate when multiple errors share the same error_id (e.g. several
+    REF-001 warnings on different segments).
 
     Returns (corrected_content, message).
     """
@@ -25,11 +31,31 @@ def apply_fix(
     parse_result = parse_edi(raw_content)
     validation = validate_edi(parse_result)
 
+    # --- Find the EXACT error instance the user clicked -----
     target_error = None
-    for err in validation.errors:
-        if err.error_id == error_id:
-            target_error = err
-            break
+
+    # Priority 1: match by error_id + line_number + element_index (exact)
+    if target_line > 0 and target_elem > 0:
+        for err in validation.errors:
+            if (err.error_id == error_id
+                    and err.line_number == target_line
+                    and err.element_index == target_elem):
+                target_error = err
+                break
+
+    # Priority 2: match by error_id + line_number
+    if not target_error and target_line > 0:
+        for err in validation.errors:
+            if err.error_id == error_id and err.line_number == target_line:
+                target_error = err
+                break
+
+    # Priority 3: fallback — first error with matching error_id
+    if not target_error:
+        for err in validation.errors:
+            if err.error_id == error_id:
+                target_error = err
+                break
 
     if not target_error:
         return raw_content, f"Error ID '{error_id}' not found in validation results"
@@ -37,33 +63,43 @@ def apply_fix(
     if not target_error.fixable and not fix_value:
         return raw_content, f"Error '{error_id}' is not auto-fixable and no manual fix value was provided"
 
-    # Apply the fix based on segment and element position
+    use_value = fix_value if fix_value else target_error.fix_value
+
+    # Use line number for precise targeting when available
+    fix_line = target_error.line_number
+    fix_elem_idx = target_error.element_index
+
+    if fix_elem_idx <= 0:
+        return raw_content, f"Error '{error_id}' targets the full segment (element_index={fix_elem_idx}), cannot auto-fix a specific element."
+
     corrected_segments = []
     fixed = False
 
-    for raw_seg in raw_segments:
+    for i, raw_seg in enumerate(raw_segments):
+        seg_line = i + 1  # segments are 1-indexed
         parts = raw_seg.split(elem_sep)
         seg_id = parts[0].strip()
 
-        if (seg_id == target_error.segment_id and
-            target_error.element_index > 0 and
-            not fixed):
-            # Replace the element value at the specified index
-            idx = target_error.element_index
-            if idx < len(parts):
-                use_value = fix_value if fix_value else target_error.fix_value
-                parts[idx] = use_value
-                fixed = True
+        if not fixed:
+            # Primary match: use line_number if available for precise targeting
+            match_by_line = (fix_line > 0 and seg_line == fix_line)
+            # Fallback: match by segment_id (for errors with line_number=0)
+            match_by_id = (fix_line <= 0 and seg_id == target_error.segment_id)
 
-            corrected_segments.append(elem_sep.join(parts))
-        else:
-            corrected_segments.append(raw_seg)
+            if match_by_line or match_by_id:
+                if fix_elem_idx < len(parts):
+                    parts[fix_elem_idx] = use_value
+                    fixed = True
+                    corrected_segments.append(elem_sep.join(parts))
+                    continue
+
+        corrected_segments.append(raw_seg)
 
     if not fixed:
         return raw_content, f"Could not locate segment to fix for error '{error_id}'"
 
     corrected = seg_term.join(corrected_segments) + seg_term
-    return corrected, f"Applied fix for {error_id}: set {target_error.segment_id}{target_error.element_index:02d} to '{fix_value or target_error.fix_value}'"
+    return corrected, f"Applied fix for {error_id}: set {target_error.segment_id}{target_error.element_index:02d} to '{use_value}'"
 
 
 def apply_all_fixes(raw_content: str) -> tuple[str, list[str]]:

@@ -108,6 +108,8 @@ class FixRequest(BaseModel):
     error_id: str
     fix_value: str
     raw_content: str
+    line_number: int = 0
+    element_index: int = -1
 
 
 class FixResponse(BaseModel):

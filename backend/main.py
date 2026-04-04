@@ -161,7 +161,8 @@ async def upload_batch(file: UploadFile = File(...)):
 async def fix_error(request: FixRequest):
     """Apply a single fix to the EDI content."""
     corrected, message = apply_fix(
-        request.raw_content, request.error_id, request.fix_value
+        request.raw_content, request.error_id, request.fix_value,
+        target_line=request.line_number, target_elem=request.element_index,
     )
 
     # Re-validate

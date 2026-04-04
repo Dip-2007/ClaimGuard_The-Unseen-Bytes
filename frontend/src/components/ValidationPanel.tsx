@@ -28,7 +28,7 @@ interface ValidationPanelProps {
     info_count: number;
     errors: ValidationError[];
   };
-  onFix: (errorId: string, fixValue: string) => void;
+  onFix: (errorId: string, fixValue: string, lineNumber: number, elementIndex: number) => void;
   onFixAll: () => void;
   onRawEdit: (newContent: string) => void;
   rawContent: string;
@@ -286,7 +286,7 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
 
                 <div className="flex flex-col items-end shrink-0">
                   {err.fixable ? (
-                    <button onClick={() => onFix(err.error_id, err.fix_value)} className="btn-primary px-4 py-2 text-sm shrink-0">
+                    <button onClick={() => onFix(err.error_id, err.fix_value, err.line_number, err.element_index)} className="btn-primary px-4 py-2 text-sm shrink-0">
                       Apply fix
                     </button>
                   ) : err.element_index > 0 && err.severity !== 'info' ? (
@@ -367,7 +367,7 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
                         />
                         <div className="flex gap-2 justify-end mt-1">
                           <button onClick={() => setManualFixId(null)} className="btn-secondary px-3 py-1 text-xs">Cancel</button>
-                          <button onClick={() => { onFix(err.error_id, manualFixValue); setManualFixId(null); }} className="btn-success px-3 py-1 text-xs whitespace-nowrap">Apply & Download</button>
+                          <button onClick={() => { onFix(err.error_id, manualFixValue, err.line_number, err.element_index); setManualFixId(null); }} className="btn-success px-3 py-1 text-xs whitespace-nowrap">Apply & Download</button>
                         </div>
                       </div>
                     ) : (

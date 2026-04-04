@@ -168,8 +168,8 @@ def _validate_envelope(result, errors: list) -> None:
             severity=Severity.ERROR, error_id="ENV-001",
             loop_location="ENVELOPE", segment_id="ISA", line_number=0,
             element_index=-1,
-            message="ISA segment is missing. Every X12 file must begin with ISA.",
-            suggestion="Add an ISA segment as the very first line of the EDI file."
+            message="Missing ISA segment — the file header is absent. Every EDI file must start with an ISA line that identifies the sender, receiver, and file version.",
+            suggestion="Add an ISA segment as the very first line. This is the 'envelope' that wraps the entire EDI transaction."
         ))
         return
 
@@ -178,65 +178,65 @@ def _validate_envelope(result, errors: list) -> None:
 
     if n != 16:
         errors.append(_err(Severity.ERROR, "ENV-002", "ENVELOPE", isa, None, None,
-            f"ISA must have exactly 16 elements; found {n}.",
-            "Count delimiter-separated fields after 'ISA'. HIPAA 5010 mandates exactly 16."))
+            f"ISA segment has {n} fields, but exactly 16 are required. This means some data fields are missing or extra delimiters were added.",
+            "Check the ISA line and count the fields separated by '*'. There must be exactly 16 values after 'ISA'."))
 
     isa01 = _get_elem(isa, 1)
     if isa01 not in ("00", "03"):
         errors.append(_err(Severity.ERROR, "ENV-003", "ENVELOPE", isa, 1, 1,
-            f"ISA01 (Auth Info Qualifier) '{isa01}' is invalid. Must be '00' or '03'.",
-            "Use '00' (no authorization info)", fixable=True, fix_value="00"))
+            f"Authorization qualifier is '{isa01}', but only '00' (no authorization) or '03' (with authorization) are allowed. This field tells the receiver whether security info is included.",
+            "Set this to '00' if no authorization info is needed (most common).", fixable=True, fix_value="00"))
 
     isa05 = _get_elem(isa, 5)
     if isa05 not in ISA_ID_QUALIFIERS:
         errors.append(_err(Severity.ERROR, "ENV-006", "ENVELOPE", isa, 1, 5,
-            f"ISA05 (Sender ID Qualifier) '{isa05}' is not a valid X12 qualifier.",
-            f"Valid values: {', '.join(sorted(ISA_ID_QUALIFIERS))}.", fixable=True, fix_value="ZZ"))
+            f"Sender ID type is '{isa05}', which is not recognized. This field identifies what kind of ID the sender is using (e.g., Tax ID, NPI, etc.).",
+            f"Use one of these valid codes: {', '.join(sorted(ISA_ID_QUALIFIERS))}. 'ZZ' (Mutually Defined) is the most common.", fixable=True, fix_value="ZZ"))
 
     isa07 = _get_elem(isa, 7)
     if isa07 not in ISA_ID_QUALIFIERS:
         errors.append(_err(Severity.ERROR, "ENV-007", "ENVELOPE", isa, 1, 7,
-            f"ISA07 (Receiver ID Qualifier) '{isa07}' is not a valid X12 qualifier.",
-            f"Valid values: {', '.join(sorted(ISA_ID_QUALIFIERS))}.", fixable=True, fix_value="ZZ"))
+            f"Receiver ID type is '{isa07}', which is not recognized. This field identifies what kind of ID the receiver is using.",
+            f"Use one of these valid codes: {', '.join(sorted(ISA_ID_QUALIFIERS))}. 'ZZ' (Mutually Defined) is the most common.", fixable=True, fix_value="ZZ"))
 
     isa11 = _get_elem(isa, 11)
     if isa11 != "^":
         errors.append(_err(Severity.ERROR, "ENV-010", "ENVELOPE", isa, 1, 11,
-            f"ISA11 (Component Element Separator) is '{isa11}'. HIPAA 5010 requires '^'.",
-            "Change ISA11 to '^'", fixable=True, fix_value="^"))
+            f"Sub-element separator is '{isa11}', but HIPAA 5010 requires it to be '^' (caret). This character is used to split complex fields like diagnosis codes.",
+            "Change this character to '^'. This is mandated by the HIPAA 5010 standard.", fixable=True, fix_value="^"))
 
     isa12 = _get_elem(isa, 12)
     if isa12 != "00501":
         errors.append(_err(Severity.ERROR, "ENV-011", "ENVELOPE", isa, 1, 12,
-            f"ISA12 (Version) is '{isa12}'. HIPAA mandate requires '00501' (5010).",
-            "Set ISA12 to '00501'", fixable=True, fix_value="00501"))
+            f"Version number is '{isa12}', but HIPAA requires '00501' (version 5010). Payers will reject files that don't use the correct version.",
+            "Set this to '00501' to indicate HIPAA 5010 compliance.", fixable=True, fix_value="00501"))
 
     isa13 = _get_elem(isa, 13)
     if not (isa13.isdigit() and len(isa13) == 9):
         errors.append(_err(Severity.ERROR, "ENV-012", "ENVELOPE", isa, 1, 13,
-            f"ISA13 (Control Number) '{isa13}' must be exactly 9 numeric digits.",
-            "Example: '000000001'. Pad with leading zeros."))
+            f"Control number '{isa13}' is invalid — it must be exactly 9 digits. This is a unique tracking number for this file exchange.",
+            "Use a 9-digit number like '000000001'. Pad with leading zeros if needed."))
         
     isa14 = _get_elem(isa, 14)
     if isa14 not in ("0", "1"):
         errors.append(_err(Severity.ERROR, "ENV-013", "ENVELOPE", isa, 1, 14,
-            f"ISA14 (Ack Requested) '{isa14}' must be '0' or '1'.",
-            "Use '0' or '1'", fixable=True, fix_value="0"))
+            f"Acknowledgment request flag is '{isa14}', but must be '0' (no acknowledgment) or '1' (acknowledgment requested).",
+            "Use '0' if you don't need a confirmation receipt, or '1' if you do.", fixable=True, fix_value="0"))
 
     if not iea:
         errors.append(ValidationError(
             severity=Severity.ERROR, error_id="ENV-015",
             loop_location="ENVELOPE", segment_id="IEA", line_number=0,
             element_index=-1,
-            message="IEA (Interchange Control Trailer) segment is missing.",
-            suggestion="Add IEA segment at the end of the file."))
+            message="Missing IEA segment — the file footer is absent. Every EDI file must end with an IEA line that closes the envelope opened by ISA.",
+            suggestion="Add an IEA segment at the very end of the file. It should contain the number of transaction groups and match the ISA control number."))
         return
 
     iea02 = _get_elem(iea, 2)
     if iea02 != isa13:
         errors.append(_err(Severity.ERROR, "ENV-016", "ENVELOPE", iea, 2, 2,
-            f"IEA02 control number '{iea02}' must match ISA13 '{isa13}'.",
-            f"Change IEA02 to '{isa13}'", fixable=True, fix_value=isa13))
+            f"File footer control number is '{iea02}', but the header says '{isa13}'. These numbers must match to confirm the file wasn't corrupted during transmission.",
+            f"Change the IEA control number to '{isa13}' so it matches the ISA header.", fixable=True, fix_value=isa13))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -252,15 +252,15 @@ def _validate_functional_group(result, errors: list) -> None:
             severity=Severity.ERROR, error_id="FG-001",
             loop_location="ENVELOPE", segment_id="GS", line_number=0,
             element_index=-1,
-            message="GS (Functional Group Header) segment is missing.",
-            suggestion="Add GS segment between ISA and ST."))
+            message="Missing GS segment — the functional group header is absent. The GS line groups related transactions together and tells the receiver what type of data to expect (claims, payments, enrollment, etc.).",
+            suggestion="Add a GS segment between the ISA header and the ST transaction header."))
         return
 
     gs01 = _get_elem(gs, 1)
     if gs01 not in GS_FUNCTIONAL_IDS:
         errors.append(_err(Severity.ERROR, "FG-002", "ENVELOPE", gs, None, 1,
-            f"GS01 (Functional ID) '{gs01}' is not a valid HIPAA functional identifier.",
-            "Use 'HC', 'HP', 'HR', 'BE' based on transaction type."))
+            f"Functional group code is '{gs01}', which is not recognized. This code tells the receiver what type of transactions are in the file (e.g., 'HC' for claims, 'HP' for institutional claims, 'HR' for payments).",
+            "Use the correct code for your transaction: 'HC' for 837P claims, 'HP' for 837I claims, 'HR' for 835 payments, 'BE' for 834 enrollment."))
 
     gs06 = _get_elem(gs, 6)
     if not ge:
@@ -268,15 +268,15 @@ def _validate_functional_group(result, errors: list) -> None:
             severity=Severity.ERROR, error_id="FG-007",
             loop_location="ENVELOPE", segment_id="GE", line_number=0,
             element_index=-1,
-            message="GE (Functional Group Trailer) segment is missing.",
-            suggestion="Add GE segment after SE and before IEA."))
+            message="Missing GE segment — the functional group footer is absent. Every GS (group header) must have a matching GE (group footer) to close the group.",
+            suggestion="Add a GE segment after the SE (transaction footer) and before the IEA (file footer)."))
         return
 
     ge02 = _get_elem(ge, 2)
     if ge02 != gs06:
         errors.append(_err(Severity.ERROR, "FG-008", "ENVELOPE", ge, None, 2,
-            f"GE02 control number '{ge02}' must match GS06 '{gs06}'.",
-            f"Change GE02 to '{gs06}'.", fixable=True, fix_value=gs06))
+            f"Group footer control number is '{ge02}', but the group header says '{gs06}'. These must match to confirm the group is complete and intact.",
+            f"Change the GE control number to '{gs06}' so it matches the GS header.", fixable=True, fix_value=gs06))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -292,8 +292,8 @@ def _validate_transaction_set(result, errors: list) -> None:
             severity=Severity.ERROR, error_id="TS-001",
             loop_location="ENVELOPE", segment_id="ST", line_number=0,
             element_index=-1,
-            message="ST (Transaction Set Header) segment is missing.",
-            suggestion="Add ST segment after GS."))
+            message="Missing ST segment — the transaction header is absent. The ST line marks the beginning of the actual transaction data (claim, payment, or enrollment).",
+            suggestion="Add an ST segment after the GS group header. Example: ST*837*0001~"))
         return
 
     st02 = _get_elem(st, 2)
@@ -303,8 +303,8 @@ def _validate_transaction_set(result, errors: list) -> None:
             severity=Severity.ERROR, error_id="TS-004",
             loop_location="ENVELOPE", segment_id="SE", line_number=0,
             element_index=-1,
-            message="SE (Transaction Set Trailer) is missing.",
-            suggestion="Add SE segment as the last segment before GE."))
+            message="Missing SE segment — the transaction footer is absent. Every ST (transaction start) must have a matching SE (transaction end).",
+            suggestion="Add an SE segment before GE. It needs the total segment count and the same control number as ST."))
         return
 
     se01 = _get_elem(se, 1)
@@ -315,14 +315,14 @@ def _validate_transaction_set(result, errors: list) -> None:
 
     if se01.isdigit() and int(se01) != actual_count:
         errors.append(_err(Severity.ERROR, "TS-005", "ENVELOPE", se, None, 1,
-            f"SE01 segment count is {se01}, but actual segment count from ST to SE inclusive is {actual_count}.",
-            f"Change SE01 to '{actual_count}'.", fixable=True, fix_value=str(actual_count)))
+            f"Segment count mismatch — the footer says there are {se01} segments, but the actual count is {actual_count}. This usually happens when segments are added or removed without updating the footer.",
+            f"Update the count to '{actual_count}' to reflect the correct number of segments between ST and SE.", fixable=True, fix_value=str(actual_count)))
 
     se02 = _get_elem(se, 2)
     if se02 != st02:
         errors.append(_err(Severity.ERROR, "TS-006", "ENVELOPE", se, None, 2,
-            f"SE02 control number '{se02}' must match ST02 '{st02}'.",
-            f"Change SE02 to '{st02}'.", fixable=True, fix_value=st02))
+            f"Transaction footer control number is '{se02}', but the header says '{st02}'. These must match to confirm the transaction is complete.",
+            f"Change it to '{st02}' to match the ST transaction header.", fixable=True, fix_value=st02))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -332,25 +332,37 @@ def _validate_transaction_set(result, errors: list) -> None:
 def _validate_nm1_segments(result, errors: list) -> None:
     for seg in _find_segments(result, "NM1"):
         loop = _get_loop_for_segment(result, seg)
+        nm1_01 = _get_elem(seg, 1)
         nm1_02 = _get_elem(seg, 2)
+
+        # Build a friendly label for the entity
+        entity_labels = {
+            "85": "Billing Provider", "87": "Pay-to Provider", "IL": "Patient/Subscriber",
+            "40": "Receiver", "41": "Submitter", "82": "Rendering Provider",
+            "77": "Service Facility", "QC": "Patient", "PR": "Payer",
+            "PE": "Payee", "DN": "Referring Provider", "DQ": "Supervising Provider",
+            "71": "Attending Provider", "72": "Operating Physician", "P3": "Primary Care Provider",
+        }
+        entity_label = entity_labels.get(nm1_01, f"Entity '{nm1_01}'")
+
         if nm1_02 not in ("1", "2"):
             errors.append(_err(Severity.ERROR, "NM1-001", loop, seg, None, 2,
-                f"NM1-02 (Entity Type) '{nm1_02}' must be '1' or '2'.",
-                "Use '1' for individuals, '2' for organizations.", fixable=True, fix_value="2"))
+                f"{entity_label} — entity type is '{nm1_02}', but must be '1' (Person) or '2' (Organization). This tells the system whether this is an individual or a company.",
+                "Use '1' for a person (doctor, patient) or '2' for an organization (hospital, insurance company).", fixable=True, fix_value="2"))
 
         nm1_08 = _get_elem(seg, 8)
         nm1_09 = _get_elem(seg, 9)
 
         if nm1_08 and nm1_08 not in VALID_NM1_08:
             errors.append(_err(Severity.ERROR, "NM1-006", loop, seg, None, 8,
-                f"NM1-08 ID Qualifier '{nm1_08}' is not a valid HIPAA NM1-08 code. Common values: 'XX' (NPI), 'MI' (Member ID), '34' (SSN), 'EI' (EIN), 'PI' (Payer ID), 'FI' (Federal Tax ID), 'SY' (Social Security Number).",
-                "Replace with a valid HIPAA NM1-08 qualifier code.", fixable=False))
+                f"{entity_label} — ID type code '{nm1_08}' is not recognized. This tells the system what kind of identifier follows (NPI, Tax ID, Member ID, etc.).",
+                "Common valid codes: 'XX' = NPI, 'MI' = Member ID, 'FI' = Federal Tax ID, 'EI' = Employer ID, 'PI' = Payer ID, '34' = SSN.", fixable=False))
 
         if nm1_08 == "XX" and nm1_09:
             if not luhn_check(nm1_09):
                 errors.append(_err(Severity.ERROR, "NM1-004", loop, seg, None, 9,
-                    f"NM1-09 NPI '{nm1_09}' fails the Luhn algorithm check.",
-                    "Verify the NPI on the CMS NPPES registry.", fixable=False))
+                    f"{entity_label} — NPI number '{nm1_09}' failed validation. The NPI must be a valid 10-digit number that passes the Luhn checksum (a mathematical check to catch typos).",
+                    "Double-check the NPI. You can verify it at https://npiregistry.cms.hhs.gov/", fixable=False))
 
 
 def _validate_dtp_segments(result, errors: list) -> None:
@@ -360,21 +372,32 @@ def _validate_dtp_segments(result, errors: list) -> None:
         dtp02 = _get_elem(seg, 2)
         dtp03 = _get_elem(seg, 3)
 
+        # Friendly labels for common DTP qualifiers
+        dtp_labels = {
+            "472": "Service Date", "471": "Prescription Date", "314": "Disability From Date",
+            "360": "Disability To Date", "297": "Last Seen Date", "296": "Initial Treatment Date",
+            "454": "Effective Date", "473": "Hospitalization Admission Date",
+            "036": "Expiration Date", "348": "Benefit Begin Date", "349": "Benefit End Date",
+            "303": "Maintenance Effective Date", "350": "Service Period Start",
+            "351": "Service Period End",
+        }
+        date_label = dtp_labels.get(dtp01, f"Date (qualifier {dtp01})")
+
         if dtp01 and dtp01 not in DTP_QUALIFIER_CODES:
             errors.append(_err(Severity.WARNING, "DTP-001", loop, seg, None, 1,
-                f"DTP01 qualifier '{dtp01}' is not listed in standard code sets.",
-                "Ensure standard HIPAA DTP qualifier codes are used."))
+                f"{date_label} — qualifier code '{dtp01}' is not in our standard list. This may be an unusual or proprietary date type.",
+                "Verify this is the correct date qualifier for this context. Check the HIPAA implementation guide for your transaction type."))
 
         if dtp02 == "D8":
             if not _valid_date8(dtp03):
                 errors.append(_err(Severity.ERROR, "DTP-002", loop, seg, None, 3,
-                    f"DTP03 date '{dtp03}' must be CCYYMMDD when DTP02='D8'.",
-                    "Example: '20240610'."))
+                    f"{date_label} — the date '{dtp03}' is not valid. When the format code is 'D8', the date must be exactly 8 digits in YYYYMMDD format (e.g., 20240610 for June 10, 2024).",
+                    "Fix the date to use YYYYMMDD format. Example: '20240610' for June 10, 2024."))
         elif dtp02 == "RD8":
             if len(dtp03) != 16 or not _valid_date8(dtp03[:8]) or not _valid_date8(dtp03[8:]):
                 errors.append(_err(Severity.ERROR, "DTP-003", loop, seg, None, 3,
-                    f"DTP03 date range '{dtp03}' must be 16 characters (CCYYMMDD-CCYYMMDD format) when DTP02='RD8'.",
-                    "Example: '2024010120240131'."))
+                    f"{date_label} — the date range '{dtp03}' is invalid. A date range must be two dates back-to-back (16 digits total, YYYYMMDDYYYYMMDD).",
+                    "Example: '2024010120240131' means January 1 to January 31, 2024."))
 
 def _validate_ref_segments(result, errors: list) -> None:
     tx = getattr(result, "transaction_type", "")
@@ -382,6 +405,17 @@ def _validate_ref_segments(result, errors: list) -> None:
         loop = _get_loop_for_segment(result, seg)
         ref01 = _get_elem(seg, 1)
         ref02 = _get_elem(seg, 2)
+
+        # Friendly labels for common REF qualifiers
+        ref_labels = {
+            "EI": "Employer ID", "SY": "Social Security Number", "0B": "State License Number",
+            "1G": "Provider UPIN", "G2": "Provider Commercial Number", "LU": "Location Number",
+            "EA": "Medical Record Number", "D9": "Claim Number", "BLT": "Billing Type",
+            "CE": "Class of Contract Code", "1L": "Group or Policy Number",
+            "38": "Authorization Number", "F8": "Original Reference Number",
+            "4N": "Special Payment Reference", "6R": "Provider Control Number",
+        }
+        ref_label = ref_labels.get(ref01, f"Reference '{ref01}'")
 
         valid_qualifiers = REF_QUALIFIER_CODES
         if tx and loop:
@@ -391,13 +425,13 @@ def _validate_ref_segments(result, errors: list) -> None:
 
         if ref01 and ref01 not in valid_qualifiers:
             errors.append(_err(Severity.WARNING, "REF-001", loop, seg, None, 1,
-                f"REF01 qualifier '{ref01}' is not valid in Loop {loop}.",
-                "Review HIPAA reference qualifiers format for this specific loop."))
+                f"{ref_label} — qualifier code '{ref01}' is not expected in this section (Loop {loop}). Each section of an EDI file only allows specific reference types.",
+                "Check the HIPAA implementation guide to see which reference qualifiers are valid in this loop."))
 
         if not ref02:
             errors.append(_err(Severity.ERROR, "REF-002", loop, seg, None, 2,
-                "REF02 Reference Identification cannot be blank.",
-                "Provide a valid reference number / identifier."))
+                f"{ref_label} — the reference value is blank. A reference qualifier was provided, but the actual ID/number is missing.",
+                "Provide the actual reference number, ID, or identifier that this qualifier refers to."))
 
 def _validate_hi_segments(result, errors: list) -> None:
     sub_element_sep = getattr(result, "sub_element_separator", ":")
@@ -414,8 +448,8 @@ def _validate_hi_segments(result, errors: list) -> None:
                 code = parts[1]
                 if qual in HI_DIAG_QUALIFIERS and not _icd10_format(code):
                      errors.append(_err(Severity.ERROR, "HI-001", loop, seg, None, i,
-                         f"Diagnosis code '{code}' does not match standard ICD-10 format.",
-                         "Verify ICD-10-CM or PCS structure (e.g., A000 without decimal)."))
+                         f"Diagnosis code '{code}' doesn't match standard ICD-10 format. ICD-10 codes start with a letter followed by 2+ digits (e.g., 'J0600' for bronchitis, 'M5412' for lumbar radiculopathy).",
+                         "Verify the ICD-10 code at an official lookup tool. Format should be like 'A000' — no decimal points in EDI."))
 
 def _validate_prv_segments(result, errors: list) -> None:
     for seg in _find_segments(result, "PRV"):
@@ -425,13 +459,13 @@ def _validate_prv_segments(result, errors: list) -> None:
 
         if prv02 != "PXC":
             errors.append(_err(Severity.WARNING, "PRV-001", loop, seg, None, 2,
-                f"PRV02 qualifier '{prv02}' is typically 'PXC' for taxonomy codes.",
-                "Use 'PXC' for provider taxonomy.", fixable=True, fix_value="PXC"))
+                f"Provider taxonomy qualifier is '{prv02}', but it's typically 'PXC' (Health Care Provider Taxonomy Code). This tells the system what classification system is being used for the provider's specialty.",
+                "Change to 'PXC' — this is the standard qualifier for taxonomy codes.", fixable=True, fix_value="PXC"))
 
         if prv03 and len(prv03) != 10:
             errors.append(_err(Severity.ERROR, "PRV-002", loop, seg, None, 3,
-                f"PRV03 taxonomy code '{prv03}' must be exactly 10 alphanumeric characters.",
-                "Verify National Provider Taxonomy code."))
+                f"Provider taxonomy code '{prv03}' is {len(prv03)} characters, but must be exactly 10. Taxonomy codes define a provider's specialty (e.g., '2085R0202X' for Diagnostic Radiology).",
+                "Look up the correct 10-character taxonomy code at https://taxonomy.nucc.org/"))
 
 
 def _validate_n3_n4(result, errors: list) -> None:
@@ -446,23 +480,23 @@ def _validate_n3_n4(result, errors: list) -> None:
         if is_us:
             if n4_02 and len(n4_02) != 2:
                 errors.append(_err(Severity.ERROR, "N4-001", loop, seg, None, 2,
-                    f"N4-02 (State) '{n4_02}' must be exactly 2 characters.",
-                    "Use the 2-letter US state abbreviation."))
+                    f"State code '{n4_02}' must be exactly 2 letters (e.g., 'CA' for California, 'NY' for New York). This is the standard US state abbreviation.",
+                    "Use the 2-letter US state abbreviation (e.g., CA, TX, FL, NY)."))
 
             if n4_03 and not re.match(r"^\d{5}(\d{4})?$", n4_03):
                 errors.append(_err(Severity.ERROR, "N4-002", loop, seg, None, 3,
-                    f"N4-03 (ZIP Code) '{n4_03}' must be 5 or 9 digits.",
-                    "Use 5-digit ZIP or ZIP+4."))
+                    f"ZIP code '{n4_03}' is invalid. US ZIP codes must be either 5 digits (e.g., '90210') or 9 digits for ZIP+4 (e.g., '902101234').",
+                    "Enter a valid 5-digit or 9-digit ZIP code without dashes."))
         else:
             if not n4_03:
                 errors.append(_err(Severity.WARNING, "N4-004", loop, seg, None, 3,
-                    "N4-03 postal code is empty.",
-                    "Provide a valid international postal code."))
+                    "Postal code is empty. For international addresses, a postal/ZIP code should still be provided.",
+                    "Add the appropriate postal code for the country specified."))
 
         if n4_04 and n4_04 not in VALID_ISO_COUNTRIES:
             errors.append(_err(Severity.WARNING, "N4-003", loop, seg, None, 4,
-                f"N4-04 country code '{n4_04}' is not a recognized ISO 3166 country code.",
-                "Use standard 2-letter ISO country code, e.g., 'US', 'IN', 'CA', 'GB'.", fixable=True, fix_value="US"))
+                f"Country code '{n4_04}' is not a recognized ISO country code. Country codes are 2-letter abbreviations (e.g., 'US' for United States, 'CA' for Canada).",
+                "Use a standard 2-letter ISO country code. Most US healthcare files use 'US'.", fixable=True, fix_value="US"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -477,11 +511,12 @@ def _validate_837(result, errors: list) -> None:
 def _validate_837_clm(result, errors: list) -> None:
     for seg in _find_segments(result, "CLM"):
         loop = _get_loop_for_segment(result, seg)
+        clm01 = _get_elem(seg, 1)
         clm02 = _get_elem(seg, 2)
         if not _valid_monetary(clm02):
             errors.append(_err(Severity.ERROR, "CLM-004", loop, seg, None, 2,
-                f"CLM02 (Total Charge) '{clm02}' is not a valid monetary amount.",
-                "Format as numeric with up to 2 decimal places.", fixable=True, fix_value="0.00"))
+                f"Claim total charge '{clm02}' for claim '{clm01}' is not a valid dollar amount. This should be a number with up to 2 decimal places (e.g., '1500.00' or '250').",
+                "Enter the total charge as a number like '1500.00'. Do not include '$' signs or commas.", fixable=True, fix_value="0.00"))
 
 
 def _validate_837_sv1(result, errors: list) -> None:
@@ -490,8 +525,8 @@ def _validate_837_sv1(result, errors: list) -> None:
         sv1_02 = _get_elem(seg, 2)
         if not _valid_monetary(sv1_02):
             errors.append(_err(Severity.ERROR, "SV1-004", loop, seg, None, 2,
-                f"SV1-02 charge '{sv1_02}' is not a valid monetary amount.",
-                "Format: numeric with up to 2 decimal places.", fixable=True, fix_value="0.00"))
+                f"Service line charge '{sv1_02}' is not a valid dollar amount. Each service line must have a numeric charge (e.g., '250.00').",
+                "Enter the charge as a number with up to 2 decimal places. No '$' signs or commas.", fixable=True, fix_value="0.00"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -501,11 +536,12 @@ def _validate_837_sv1(result, errors: list) -> None:
 def _validate_835(result, errors: list) -> None:
     for seg in _find_segments(result, "CLP"):
         loop = _get_loop_for_segment(result, seg)
+        clp01 = _get_elem(seg, 1)
         clp03 = _get_elem(seg, 3)
         if clp03 and not _valid_monetary(clp03):
             errors.append(_err(Severity.ERROR, "CLP-003", loop, seg, None, 3,
-                f"CLP03 (Claim Charge) '{clp03}' is not valid.",
-                "Format: numeric.", fixable=True, fix_value="0.00"))
+                f"Claim charge amount '{clp03}' for claim '{clp01}' is not a valid dollar amount in the payment/remittance data.",
+                "Enter the charge as a number like '1500.00'. No '$' signs or commas.", fixable=True, fix_value="0.00"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -518,8 +554,8 @@ def _validate_834(result, errors: list) -> None:
         ins01 = _get_elem(seg, 1)
         if ins01 not in ("Y", "N"):
             errors.append(_err(Severity.ERROR, "INS-001", loop, seg, None, 1,
-                f"INS01 (Member Indicator) '{ins01}' must be 'Y' or 'N'.",
-                "Set to Y or N.", fixable=True, fix_value="Y"))
+                f"Subscriber indicator is '{ins01}', but must be 'Y' (this person IS the subscriber/primary member) or 'N' (this person is a dependent, like a spouse or child).",
+                "Set to 'Y' if the member is the subscriber, or 'N' if they are a dependent on someone else's plan.", fixable=True, fix_value="Y"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -536,8 +572,8 @@ def _validate_cross_segment(result, errors: list) -> None:
         parent_id = _get_elem(seg, 2)
         if parent_id and parent_id not in hl_ids:
             errors.append(_err(Severity.ERROR, "HL-001", "ENVELOPE", seg, None, 2,
-                f"HL02 references parent HL '{parent_id}' which does not exist prior in the hierarchy.",
-                "Ensure HL segments are logically hierarchical."))
+                f"Hierarchy link broken — this segment references parent '{parent_id}', but no HL segment with that ID exists. HL segments form a tree structure (Info Source → Subscriber → Patient), and all parent references must point to a valid parent.",
+                "Check the HL hierarchy. Each child HL must reference the ID of its parent HL segment."))
 
     # Mathematical checks
     if tx in ("837P", "837I"):
@@ -566,8 +602,8 @@ def _check_837_math(loop, errors):
 
                 if sv_found and abs(clm_charge - sv_sum) >= 0.01:
                     errors.append(_err(Severity.WARNING, "MATH-837", loop.loop_id, clm, None, 2,
-                        f"CLM02 total charge {clm_charge:.2f} does not strictly equal sum of service lines {sv_sum:.2f}.",
-                        "Verify line items equal header totals if contracted to balance."))
+                        f"Math check failed — the claim total is ${clm_charge:.2f}, but the individual service lines add up to ${sv_sum:.2f}. The claim header total should equal the sum of all service line charges.",
+                        f"Either update the claim total to ${sv_sum:.2f}, or check the individual service line amounts."))
             except ValueError:
                 pass
 
@@ -596,12 +632,12 @@ def _check_835_math(loop, errors):
                 if svc_found:
                     if abs(clp_charge - svc_charge_sum) >= 0.01:
                         errors.append(_err(Severity.WARNING, "MATH-835-CLP03", loop.loop_id, clp, None, 3,
-                            f"CLP03 claim charge {clp_charge:.2f} mismatches sum of SVC02 {svc_charge_sum:.2f}.",
-                            "Adjust amounts to balance."))
+                            f"Math check failed — claim-level charge is ${clp_charge:.2f}, but the service line charges add up to ${svc_charge_sum:.2f}. These should balance.",
+                            f"Verify each service line charge amount. The claim total should equal the sum of all SVC line charges."))
                     if abs(clp_payment - svc_payment_sum) >= 0.01:
                         errors.append(_err(Severity.WARNING, "MATH-835-CLP04", loop.loop_id, clp, None, 4,
-                            f"CLP04 claim payment {clp_payment:.2f} mismatches sum of SVC03 {svc_payment_sum:.2f}.",
-                            "Adjust amounts to balance."))
+                            f"Math check failed — claim-level payment is ${clp_payment:.2f}, but the service line payments add up to ${svc_payment_sum:.2f}. These should balance.",
+                            f"Verify each service line payment amount. The claim payment total should equal the sum of all SVC line payments."))
             except ValueError:
                 pass
     for child in loop.children:
@@ -648,7 +684,7 @@ def validate_edi(parse_result: ParseResult) -> ValidationResult:
         errors.append(ValidationError(
             error_id="GEN001",
             severity="error",
-            message="No segments found in the file",
+            message="No data found — the file appears to be empty or contains no recognizable EDI segments.",
         ))
         return ValidationResult(
             is_valid=False,
@@ -687,4 +723,3 @@ def validate_edi(parse_result: ParseResult) -> ValidationResult:
         info_count=info_count,
         errors=errors,
     )
-
