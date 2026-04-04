@@ -1,4 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import styled, { keyframes, css } from 'styled-components';
 
 interface FileUploadProps {
   onFileProcessed: (data: any) => void;
@@ -27,16 +29,42 @@ const sampleFiles = [
   },
 ];
 
+type UploadState = 'idle' | 'dragover' | 'uploading' | 'success' | 'complete';
+
 export default function FileUpload({ onFileProcessed, onRawContent, onLoading }: FileUploadProps) {
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileSize, setFileSize] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const dragCounter = useRef(0);
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+  };
 
   const processFile = useCallback(
     async (file: File) => {
       setError(null);
       setFileName(file.name);
+      setFileSize(formatFileSize(file.size));
+      setUploadState('uploading');
+      setProgress(0);
       onLoading(true);
+
+      // Slower progress animation for dramatic effect
+      let prog = 0;
+      const interval = setInterval(() => {
+        prog += Math.random() * 8 + 3;
+        if (prog >= 95) {
+          prog = 95;
+          clearInterval(interval);
+        }
+        setProgress(Math.min(prog, 95));
+      }, 250);
 
       try {
         const formData = new FormData();
@@ -54,13 +82,33 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
 
         const data = await response.json();
 
+        clearInterval(interval);
+        setProgress(100);
+
         if (!isZip && data.parse_result?.raw_content) {
           onRawContent(data.parse_result.raw_content);
         }
 
-        onFileProcessed(data);
+        // ─── SLOWED DOWN TRANSITION TIMINGS ───
+        // Hold at 100% for 1.2s so user sees the full progress bar
+        setTimeout(() => {
+          setUploadState('success');
+
+          // Hold success checkmark for 2.5s (was 1.2s) — slow and satisfying
+          setTimeout(() => {
+            setUploadState('complete');
+
+            // Show file card for 2s (was 1.4s) before navigating
+            setTimeout(() => {
+              onFileProcessed(data);
+            }, 2000);
+          }, 2500);
+        }, 1200);
       } catch (err: any) {
+        clearInterval(interval);
         setError(err.message || 'Failed to process file');
+        setUploadState('idle');
+        setProgress(0);
       } finally {
         onLoading(false);
       }
@@ -68,10 +116,34 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
     [onFileProcessed, onRawContent, onLoading],
   );
 
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setUploadState('dragover');
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setUploadState('idle');
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      setIsDragOver(false);
+      e.stopPropagation();
+      dragCounter.current = 0;
       const file = e.dataTransfer.files?.[0];
       if (file) processFile(file);
     },
@@ -105,57 +177,332 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
     [processFile, onLoading],
   );
 
+  const isUploading = uploadState === 'uploading';
+  const isSuccess = uploadState === 'success';
+  const isComplete = uploadState === 'complete';
+  const showShimmer = isUploading || isSuccess;
+
   return (
     <section className="glass-card panel-card animate-fade-in">
-      <div
-        className={`drop-zone ${isDragOver ? 'active' : ''}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragOver(true);
-        }}
-        onDragLeave={() => setIsDragOver(false)}
+      <DropContainer
+        ref={dropRef}
+        $state={uploadState}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
         onDrop={handleDrop}
-        onClick={() => document.getElementById('file-input')?.click()}
+        onClick={() => (uploadState === 'idle' || uploadState === 'complete') && document.getElementById('file-input')?.click()}
       >
         <input
           id="file-input"
           type="file"
           accept=".edi,.txt,.x12,.zip"
           onChange={handleFileSelect}
-          className="hidden"
+          style={{ display: 'none' }}
         />
 
-        <div className="upload-icon">
-          <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.6}
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 7v10m0 0l-4-4m4 4l4-4"
+        {/* Animated glowing border */}
+        <BorderGlow $state={uploadState} />
+
+        {/* Particle orbits for dragover effect */}
+        <AnimatePresence>
+          {uploadState === 'dragover' && (
+            <ParticleOrbit as={motion.div} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}>
+              <Particle $delay={0} $size={4} $distance={120} $speed={6} />
+              <Particle $delay={1.5} $size={3} $distance={100} $speed={8} />
+              <Particle $delay={3} $size={5} $distance={140} $speed={10} />
+              <Particle $delay={4.5} $size={3} $distance={90} $speed={7} />
+            </ParticleOrbit>
+          )}
+        </AnimatePresence>
+
+        {/* Teal diagonal shimmer — Dribbble uploading effect */}
+        <AnimatePresence>
+          {showShimmer && (
+            <ShimmerBg
+              as={motion.div}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8, ease: 'easeInOut' }}
             />
-          </svg>
-        </div>
+          )}
+        </AnimatePresence>
 
-        <h2 className="upload-title">Drop an EDI file to start the review</h2>
-        <p className="mx-auto max-w-2xl text-base leading-7 text-slate-300">
-          Supports <span className="text-white">.edi</span>, <span className="text-white">.txt</span>, <span className="text-white">.x12</span>, and batch <span className="text-white">.zip</span> uploads.
-        </p>
+        {/* Radial pulse on success */}
+        <AnimatePresence>
+          {isSuccess && (
+            <SuccessPulseRing
+              as={motion.div}
+              initial={{ scale: 0.3, opacity: 0.8 }}
+              animate={{ scale: 3.5, opacity: 0 }}
+              transition={{ duration: 1.8, ease: 'easeOut' }}
+            />
+          )}
+          {isSuccess && (
+            <SuccessPulseRing
+              as={motion.div}
+              initial={{ scale: 0.3, opacity: 0.6 }}
+              animate={{ scale: 2.5, opacity: 0 }}
+              transition={{ duration: 1.4, ease: 'easeOut', delay: 0.2 }}
+            />
+          )}
+        </AnimatePresence>
 
-        {fileName && (
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200">
-            <span className="text-accent">Selected</span>
-            <span>{fileName}</span>
-          </div>
+        <ContentLayer>
+          <AnimatePresence mode="wait">
+
+            {/* ━━━ IDLE / DRAGOVER STATE ━━━ */}
+            {(uploadState === 'idle' || uploadState === 'dragover') && (
+              <motion.div
+                key="idle"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -40, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] } }}
+                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                style={{ textAlign: 'center' }}
+              >
+                {/* 3D Document Icon with perspective + glow + shadow */}
+                <DocIcon3DContainer
+                  as={motion.div}
+                  animate={
+                    uploadState === 'dragover'
+                      ? {
+                          rotateY: [0, 12, -12, 0],
+                          rotateX: [-5, 5, -5],
+                          scale: [1, 1.12, 1.08, 1.12],
+                          y: [0, -12, -8, -12],
+                        }
+                      : {
+                          rotateY: [0, 6, -6, 0],
+                          rotateX: [0, -3, 3, 0],
+                          y: [0, -10, 0],
+                        }
+                  }
+                  transition={{
+                    duration: uploadState === 'dragover' ? 2.5 : 4,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                >
+                  {/* Glow halo behind icon */}
+                  <DocGlowHalo $active={uploadState === 'dragover'} />
+                  
+                  {/* Multi-layer 3D Document SVG */}
+                  <Doc3DSVG isDragover={uploadState === 'dragover'} />
+                </DocIcon3DContainer>
+
+                <DropTitle
+                  as={motion.h2}
+                  animate={
+                    uploadState === 'dragover'
+                      ? { color: '#54d0ff', scale: 1.05, textShadow: '0 0 30px rgba(84,208,255,0.4)' }
+                      : { color: '#ffffff', scale: 1, textShadow: '0 0 0px transparent' }
+                  }
+                  transition={{ duration: 0.4 }}
+                >
+                  Drag & Drop
+                </DropTitle>
+                <DropSubtext>
+                  or{' '}
+                  <BrowseLink onClick={(e) => { e.stopPropagation(); document.getElementById('file-input')?.click(); }}>
+                    choose a file
+                  </BrowseLink>
+                </DropSubtext>
+                <RequirementsText>
+                  Supports .edi, .txt, .x12 and batch .zip uploads
+                </RequirementsText>
+              </motion.div>
+            )}
+
+            {/* ━━━ UPLOADING STATE ━━━ */}
+            {isUploading && (
+              <motion.div
+                key="uploading"
+                initial={{ opacity: 0, y: 40, filter: 'blur(8px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, y: -40, filter: 'blur(8px)' }}
+                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                style={{ textAlign: 'center', width: '100%' }}
+              >
+                <ProgressBarContainer>
+                  <ProgressTrack>
+                    <ProgressFill
+                      as={motion.div}
+                      initial={{ width: '0%' }}
+                      animate={{ width: `${progress}%` }}
+                      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                  </ProgressTrack>
+                </ProgressBarContainer>
+
+                <PercentageText
+                  as={motion.div}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  {Math.round(progress)}%
+                </PercentageText>
+
+                <UploadingText
+                  as={motion.p}
+                  animate={{ opacity: [0.4, 0.8, 0.4] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  Uploading...
+                </UploadingText>
+              </motion.div>
+            )}
+
+            {/* ━━━ SUCCESS STATE ━━━ (SLOWED — visible for 2.5s) */}
+            {isSuccess && (
+              <motion.div
+                key="success"
+                initial={{ opacity: 0, scale: 0.6, filter: 'blur(12px)' }}
+                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, scale: 0.85, filter: 'blur(6px)', y: -30 }}
+                transition={{
+                  duration: 0.9,
+                  ease: [0.16, 1, 0.3, 1],
+                  scale: { type: 'spring', stiffness: 200, damping: 18 },
+                }}
+                style={{ textAlign: 'center' }}
+              >
+                {/* Animated checkmark with glow ring */}
+                <CheckmarkContainer
+                  as={motion.div}
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 180, damping: 14, delay: 0.2 }}
+                >
+                  <CheckmarkGlowRing />
+                  <CheckmarkInner>
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
+                      <motion.path
+                        d="M5 13l4 4L19 7"
+                        stroke="#4ade80"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                      />
+                    </svg>
+                  </CheckmarkInner>
+                </CheckmarkContainer>
+
+                <SuccessLabel
+                  as={motion.div}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8, duration: 0.6 }}
+                >
+                  Success!
+                </SuccessLabel>
+
+                <UploadingText
+                  as={motion.p}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.35 }}
+                  transition={{ delay: 1, duration: 0.5 }}
+                >
+                  File parsed & validated
+                </UploadingText>
+              </motion.div>
+            )}
+
+            {/* ━━━ COMPLETE STATE ━━━ (SLOWED — visible for 2s) */}
+            {isComplete && (
+              <motion.div
+                key="complete"
+                initial={{ opacity: 0, filter: 'blur(8px)' }}
+                animate={{ opacity: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.7, ease: 'easeOut' }}
+                style={{ textAlign: 'center', width: '100%' }}
+              >
+                <SmallCheckWrap
+                  as={motion.div}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.15 }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </SmallCheckWrap>
+                <SuccessLabel
+                  as={motion.div}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3, duration: 0.5 }}
+                  style={{ fontSize: '0.95rem', marginTop: 10 }}
+                >
+                  Success!
+                </SuccessLabel>
+                <UploadingText
+                  as={motion.p}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.3 }}
+                  transition={{ delay: 0.5 }}
+                  style={{ fontSize: '0.82rem', marginTop: 4 }}
+                >
+                  Redirecting to results...
+                </UploadingText>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </ContentLayer>
+      </DropContainer>
+
+      {/* ━━━ FILE ITEM CARD ━━━ */}
+      <AnimatePresence>
+        {(isComplete || (isSuccess && fileName)) && fileName && (
+          <FileItemCard
+            as={motion.div}
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 15, scale: 0.98 }}
+            transition={{
+              type: 'spring',
+              stiffness: 200,
+              damping: 22,
+              delay: isComplete ? 0.35 : 0.15,
+            }}
+          >
+            <FileItemIconWrap>
+              <FileItemIconLabel>EDI</FileItemIconLabel>
+            </FileItemIconWrap>
+            <FileItemDetails>
+              <FileItemName>{fileName}</FileItemName>
+              <FileItemSize>{fileSize}</FileItemSize>
+            </FileItemDetails>
+            <FileItemActions>
+              <FileActionBtn title="Re-parse">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 4 23 10 17 10" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+              </FileActionBtn>
+            </FileItemActions>
+          </FileItemCard>
         )}
-      </div>
+      </AnimatePresence>
 
       {error && (
-        <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-          {error}
-        </div>
+        <ErrorBar
+          as={motion.div}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <span>⚠</span> {error}
+          <ErrorDismiss onClick={() => { setError(null); setUploadState('idle'); }}>×</ErrorDismiss>
+        </ErrorBar>
       )}
 
-      <div className="mt-8">
+      <SampleSection>
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="eyebrow">Sample files</p>
@@ -164,16 +511,612 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
           <p className="hidden text-sm text-slate-400 md:block">One click loads a transaction and opens the results panel.</p>
         </div>
 
-        <div className="sample-grid">
-          {sampleFiles.map((sample) => (
-            <button key={sample.name} onClick={() => loadSample(sample.name)} className="sample-button">
+        <SampleGrid>
+          {sampleFiles.map((sample, i) => (
+            <SampleCard
+              as={motion.button}
+              key={sample.name}
+              onClick={() => loadSample(sample.name)}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.12, duration: 0.5 }}
+              whileHover={{ y: -5, borderColor: 'rgba(84, 208, 255, 0.4)', transition: { duration: 0.3 } }}
+              whileTap={{ scale: 0.97 }}
+            >
               <span className="eyebrow">{sample.accent}</span>
               <strong>{sample.label}</strong>
               <p>{sample.description}</p>
-            </button>
+            </SampleCard>
           ))}
-        </div>
-      </div>
+        </SampleGrid>
+      </SampleSection>
     </section>
   );
 }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   3D Document Icon — Multi-layer with perspective
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+function Doc3DSVG({ isDragover }: { isDragover: boolean }) {
+  return (
+    <svg width="80" height="92" viewBox="0 0 80 92" fill="none" xmlns="http://www.w3.org/2000/svg"
+      style={{ filter: 'drop-shadow(0 20px 40px rgba(59, 89, 152, 0.5)) drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }}
+    >
+      {/* Shadow page — deepest layer */}
+      <rect x="6" y="10" width="48" height="60" rx="6" fill="#1a2744" opacity="0.7" />
+
+      {/* Middle page layer */}
+      <rect x="12" y="6" width="48" height="60" rx="6" fill="#263c64" stroke="#3d5a8a" strokeWidth="0.8" />
+
+      {/* Front page — main document */}
+      <rect x="18" y="14" width="48" height="60" rx="6"
+        fill="url(#docGrad)"
+        stroke={isDragover ? '#7cb3ff' : '#5b7cc2'}
+        strokeWidth="1.2"
+      />
+
+      {/* Folded corner with shadow */}
+      <path d="M52 14V30H66" fill="#2a3a5c" />
+      <path d="M52 14V30H66" fill="url(#foldGrad)" />
+      <path d="M52 14L66 30" stroke={isDragover ? '#7cb3ff' : '#5b7cc2'} strokeWidth="0.8" />
+
+      {/* Text lines with stagger animation feel */}
+      <rect x="26" y="38" width="32" height="3" rx="1.5" fill="#5b7cc2" opacity="0.65" />
+      <rect x="26" y="46" width="24" height="3" rx="1.5" fill="#5b7cc2" opacity="0.45" />
+      <rect x="26" y="54" width="28" height="3" rx="1.5" fill="#5b7cc2" opacity="0.35" />
+      <rect x="26" y="62" width="18" height="3" rx="1.5" fill="#5b7cc2" opacity="0.25" />
+
+      {/* Upload arrow circle with glow */}
+      <circle cx="56" cy="64" r="15"
+        fill="#0d1f33"
+        stroke={isDragover ? '#4ade80' : '#3dd9c1'}
+        strokeWidth="1.8"
+      />
+      {isDragover && (
+        <circle cx="56" cy="64" r="15"
+          fill="none"
+          stroke="#4ade80"
+          strokeWidth="0.5"
+          opacity="0.4"
+        />
+      )}
+      <path d="M56 71V57M50 61l6-6 6 6"
+        stroke={isDragover ? '#4ade80' : '#3dd9c1'}
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Gradients */}
+      <defs>
+        <linearGradient id="docGrad" x1="18" y1="14" x2="66" y2="74" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#4a6fa5" />
+          <stop offset="0.5" stopColor="#3b5998" />
+          <stop offset="1" stopColor="#2d4373" />
+        </linearGradient>
+        <linearGradient id="foldGrad" x1="52" y1="14" x2="66" y2="30" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#2a3a5c" />
+          <stop offset="1" stopColor="#1a2744" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+/* ━━━ Keyframes ━━━ */
+
+const diagonalShimmer = keyframes`
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+`;
+
+const neonPulse = keyframes`
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+`;
+
+const progressPulse = keyframes`
+  0%, 100% { box-shadow: 0 0 8px rgba(84, 208, 255, 0.5), 0 0 20px rgba(84, 208, 255, 0.15); }
+  50% { box-shadow: 0 0 16px rgba(84, 208, 255, 0.9), 0 0 40px rgba(84, 208, 255, 0.3); }
+`;
+
+const glowPulse = keyframes`
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.3), 0 0 60px rgba(74, 222, 128, 0.1);
+    border-color: rgba(74, 222, 128, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(74, 222, 128, 0.5), 0 0 80px rgba(74, 222, 128, 0.2);
+    border-color: rgba(74, 222, 128, 0.6);
+  }
+`;
+
+const orbitSpin = keyframes`
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+`;
+
+const haloBreath = keyframes`
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.15); opacity: 0.6; }
+`;
+
+/* ━━━ Styled Components ━━━ */
+
+const DropContainer = styled.div<{ $state: UploadState }>`
+  position: relative;
+  padding: 56px 40px;
+  border-radius: 20px;
+  overflow: hidden;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ${({ $state }) => ($state === 'idle' || $state === 'complete' ? 'pointer' : 'default')};
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #0b1120;
+
+  ${({ $state }) =>
+    $state === 'idle' &&
+    css`
+      border: 1.5px dashed rgba(255, 255, 255, 0.1);
+      &:hover {
+        border-color: rgba(84, 208, 255, 0.3);
+        background: #0d1524;
+        box-shadow: 0 0 60px rgba(84, 208, 255, 0.04);
+      }
+    `}
+
+  ${({ $state }) =>
+    $state === 'dragover' &&
+    css`
+      border: 1.5px solid rgba(84, 208, 255, 0.6);
+      background: radial-gradient(circle at 50% 50%, rgba(84, 208, 255, 0.04) 0%, #0b1120 70%);
+      box-shadow: 0 0 80px rgba(84, 208, 255, 0.06);
+    `}
+
+  ${({ $state }) =>
+    ($state === 'uploading' || $state === 'success') &&
+    css`
+      border: 1.5px solid rgba(84, 208, 255, 0.5);
+    `}
+
+  ${({ $state }) =>
+    $state === 'complete' &&
+    css`
+      border: 1.5px solid rgba(74, 222, 128, 0.25);
+      background: #0b1120;
+    `}
+`;
+
+const BorderGlow = styled.div<{ $state: UploadState }>`
+  position: absolute;
+  inset: -2px;
+  border-radius: 22px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+
+  ${({ $state }) =>
+    ($state === 'dragover' || $state === 'uploading') &&
+    css`
+      opacity: 1;
+      box-shadow:
+        0 0 40px rgba(84, 208, 255, 0.15),
+        0 0 100px rgba(84, 208, 255, 0.06),
+        inset 0 0 40px rgba(84, 208, 255, 0.02);
+      animation: ${neonPulse} 3s ease-in-out infinite;
+    `}
+
+  ${({ $state }) =>
+    $state === 'success' &&
+    css`
+      opacity: 1;
+      box-shadow:
+        0 0 40px rgba(74, 222, 128, 0.15),
+        0 0 100px rgba(74, 222, 128, 0.06);
+      animation: ${glowPulse} 2s ease-in-out infinite;
+    `}
+
+  ${({ $state }) =>
+    $state === 'complete' &&
+    css`
+      opacity: 0.6;
+      box-shadow:
+        0 0 20px rgba(74, 222, 128, 0.1),
+        0 0 50px rgba(74, 222, 128, 0.03);
+    `}
+`;
+
+/* Orbiting particles on drag */
+const ParticleOrbit = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  z-index: 2;
+  pointer-events: none;
+`;
+
+const Particle = styled.div<{ $delay: number; $size: number; $distance: number; $speed: number }>`
+  position: absolute;
+  width: ${p => p.$size}px;
+  height: ${p => p.$size}px;
+  background: #54d0ff;
+  border-radius: 50%;
+  box-shadow: 0 0 ${p => p.$size * 3}px rgba(84, 208, 255, 0.6);
+  animation: ${orbitSpin} ${p => p.$speed}s linear infinite;
+  animation-delay: -${p => p.$delay}s;
+  transform-origin: 0 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: ${p => p.$size * 3}px;
+    height: ${p => p.$size * 3}px;
+    background: radial-gradient(circle, rgba(84, 208, 255, 0.2) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  /* Place particle at distance from center */
+  margin-left: ${p => p.$distance}px;
+  margin-top: -${p => p.$size / 2}px;
+`;
+
+/* Teal diagonal shimmer */
+const ShimmerBg = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 20px;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      -55deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(61, 217, 193, 0.035) 8px,
+      rgba(61, 217, 193, 0.035) 9px
+    ),
+    linear-gradient(
+      135deg,
+      rgba(13, 42, 60, 0.95) 0%,
+      rgba(20, 70, 80, 0.85) 30%,
+      rgba(10, 50, 65, 0.9) 60%,
+      rgba(8, 30, 45, 0.95) 100%
+    );
+  background-size: 400% 100%, 100% 100%;
+  animation: ${diagonalShimmer} 10s linear infinite;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 40%, rgba(84, 208, 255, 0.06) 0%, transparent 60%);
+  }
+`;
+
+const SuccessPulseRing = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border-radius: 50%;
+  border: 2px solid rgba(74, 222, 128, 0.3);
+  pointer-events: none;
+  z-index: 3;
+`;
+
+const ContentLayer = styled.div`
+  position: relative;
+  z-index: 5;
+  width: 100%;
+`;
+
+/* 3D Icon Container with CSS perspective */
+const DocIcon3DContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+  perspective: 600px;
+  transform-style: preserve-3d;
+  position: relative;
+`;
+
+const DocGlowHalo = styled.div<{ $active: boolean }>`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120px;
+  height: 120px;
+  margin: -60px 0 0 -60px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    ${p => p.$active ? 'rgba(84, 208, 255, 0.15)' : 'rgba(59, 89, 152, 0.12)'} 0%,
+    transparent 70%
+  );
+  animation: ${haloBreath} ${p => p.$active ? '1.5s' : '4s'} ease-in-out infinite;
+  pointer-events: none;
+`;
+
+const DropTitle = styled.h2`
+  margin: 0 0 8px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+`;
+
+const DropSubtext = styled.p`
+  margin: 0;
+  color: #888;
+  font-size: 0.95rem;
+`;
+
+const BrowseLink = styled.span`
+  color: #54d0ff;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: rgba(84, 208, 255, 0.3);
+  text-underline-offset: 3px;
+  transition: all 0.3s;
+
+  &:hover {
+    text-decoration-color: #54d0ff;
+    text-shadow: 0 0 12px rgba(84, 208, 255, 0.3);
+  }
+`;
+
+const RequirementsText = styled.p`
+  margin: 20px 0 0;
+  color: #555;
+  font-size: 0.78rem;
+`;
+
+/* ── Uploading state ── */
+
+const ProgressBarContainer = styled.div`
+  max-width: 300px;
+  margin: 0 auto 24px;
+`;
+
+const ProgressTrack = styled.div`
+  position: relative;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: visible;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2f7cf6, #54d0ff, #3dd9c1);
+  position: relative;
+  animation: ${progressPulse} 2s ease-in-out infinite;
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: -3px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #54d0ff;
+    box-shadow: 0 0 14px rgba(84, 208, 255, 0.9), 0 0 35px rgba(84, 208, 255, 0.35);
+  }
+`;
+
+const PercentageText = styled.div`
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 8px;
+`;
+
+const UploadingText = styled.p`
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+`;
+
+/* ── Success state ── */
+
+const CheckmarkContainer = styled.div`
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 16px;
+  position: relative;
+  display: grid;
+  place-items: center;
+`;
+
+const CheckmarkGlowRing = styled.div`
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(74, 222, 128, 0.3);
+  animation: ${glowPulse} 2s ease-in-out infinite;
+`;
+
+const CheckmarkInner = styled.div`
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(74, 222, 128, 0.08);
+  border: 1.5px solid rgba(74, 222, 128, 0.2);
+`;
+
+const SmallCheckWrap = styled.div`
+  width: 40px;
+  height: 40px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+`;
+
+const SuccessLabel = styled.div`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #4ade80;
+  margin-bottom: 8px;
+  text-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+`;
+
+/* ── File Card ── */
+
+const FileItemCard = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(8px);
+`;
+
+const FileItemIconWrap = styled.div`
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3b5998, #5b7cc2);
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(59, 89, 152, 0.3);
+`;
+
+const FileItemIconLabel = styled.span`
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.05em;
+`;
+
+const FileItemDetails = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const FileItemName = styled.div`
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const FileItemSize = styled.div`
+  font-size: 0.75rem;
+  color: #777;
+  margin-top: 2px;
+`;
+
+const FileItemActions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const FileActionBtn = styled.button`
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #888;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.05);
+  }
+`;
+
+const ErrorBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(255, 80, 100, 0.08);
+  border: 1px solid rgba(255, 80, 100, 0.2);
+  color: #ff6f7d;
+  font-size: 0.88rem;
+  font-weight: 500;
+`;
+
+const ErrorDismiss = styled.button`
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #ff6f7d;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0.6;
+  &:hover { opacity: 1; }
+`;
+
+const SampleSection = styled.div`
+  margin-top: 32px;
+`;
+
+const SampleGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+`;
+
+const SampleCard = styled.button`
+  padding: 18px;
+  text-align: left;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: inherit;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: background 0.3s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  strong {
+    display: block;
+    margin-top: 10px;
+  }
+
+  p {
+    margin: 6px 0 0;
+    color: #888;
+    font-size: 0.88rem;
+  }
+`;

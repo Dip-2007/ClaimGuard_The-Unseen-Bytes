@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/dagre": "^0.7.54",
+    "@xyflow/react": "^12.10.2",
+    "dagre": "^0.8.5",
     "framer-motion": "^12.38.0",
     "gsap": "^3.14.2",
     "lucide-react": "^1.7.0",

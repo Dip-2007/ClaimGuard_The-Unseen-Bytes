@@ -52,7 +52,7 @@ export default function HeroSection({ onScrollToUpload }: HeroSectionProps) {
         if (p.y > canvas.offsetHeight) p.y = 0;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(130, 230, 160, ${p.o})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.o * 0.6})`;
         ctx.fill();
       }
       animId = requestAnimationFrame(draw);
@@ -69,9 +69,8 @@ export default function HeroSection({ onScrollToUpload }: HeroSectionProps) {
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}
       />
 
-      {/* Subtle radial glow */}
+      {/* Subtle ambient light — no green */}
       <div className="ambient-glow" />
-      <div className="ambient-glow-teal" />
 
       {/* Content */}
       <div className="hero-content">
@@ -145,7 +144,7 @@ const HeroWrapper = styled.section`
   align-items: center;
   justify-content: center;
   background: #050507;
-  overflow: hidden;
+  overflow: visible;
 
   .ambient-glow {
     position: absolute;
@@ -155,22 +154,12 @@ const HeroWrapper = styled.section`
     width: 700px;
     height: 500px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(74, 222, 128, 0.07), transparent 70%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.015), transparent 70%);
     filter: blur(100px);
     pointer-events: none;
   }
 
-  .ambient-glow-teal {
-    position: absolute;
-    bottom: 5%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 400px;
-    height: 200px;
-    background: radial-gradient(circle, rgba(6, 182, 212, 0.05), transparent 70%);
-    filter: blur(80px);
-    pointer-events: none;
-  }
+
 
   .hero-content {
     position: relative;
@@ -204,6 +193,8 @@ const HeroWrapper = styled.section`
     background-clip: text;
     font-style: italic;
     font-weight: 700;
+    padding-right: 0.08em;
+    display: inline-block;
   }
 
   .white-text {
@@ -231,7 +222,7 @@ const HeroWrapper = styled.section`
     font-size: 0.65rem;
     font-weight: 700;
     letter-spacing: 0.25em;
-    color: rgba(160, 210, 180, 0.35);
+    color: rgba(180, 180, 190, 0.35);
     text-transform: uppercase;
   }
 
@@ -240,8 +231,8 @@ const HeroWrapper = styled.section`
     height: 40px;
     background: linear-gradient(
       to bottom,
-      rgba(74, 222, 128, 0.5),
-      rgba(34, 197, 94, 0.2),
+      rgba(200, 200, 210, 0.4),
+      rgba(160, 160, 170, 0.15),
       transparent
     );
     animation: ${scrollPulse} 2.5s ease-in-out infinite;
