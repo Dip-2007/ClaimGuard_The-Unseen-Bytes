@@ -13,6 +13,15 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Set theme BEFORE React loads to prevent flash-of-wrong-theme
+      (function() {
+        var t = localStorage.getItem('claimguard-theme');
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import styled, { keyframes } from 'styled-components';
-import { Home, ShieldCheck, MessageSquare, Plus, FileDown, Bot } from 'lucide-react';
+import { Home, ShieldCheck, MessageSquare, Plus, FileDown, Bot, Sun, Moon } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type TabId = 'upload' | 'results' | 'chat';
@@ -26,16 +26,38 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
   const smoothScrollY = useSpring(scrollY, { stiffness: 60, damping: 22, restDelta: 0.001 });
   
   const navMaxWidth = useTransform(smoothScrollY, [0, 150], ["1400px", "1000px"]);
-  const navBackground = useTransform(smoothScrollY, [0, 150], ['rgba(15, 15, 18, 0.35)', 'rgba(10, 10, 14, 0.65)']);
   const navBackdrop = useTransform(smoothScrollY, [0, 150], ['blur(16px)', 'blur(32px)']);
-  const navBoxShadow = useTransform(smoothScrollY, [0, 150], [
+
+  // These will be set after theme state is initialized below
+  const navBackgroundDark = useTransform(smoothScrollY, [0, 150], ['rgba(15, 15, 18, 0.35)', 'rgba(10, 10, 14, 0.65)']);
+  const navBackgroundLight = useTransform(smoothScrollY, [0, 150], ['rgba(255, 255, 255, 0.92)', 'rgba(255, 255, 255, 0.98)']);
+  const navBoxShadowDark = useTransform(smoothScrollY, [0, 150], [
     '0 8px 32px 0 rgba(0, 0, 0, 0.25), inset 0 1px 1px 0 rgba(255, 255, 255, 0.05)', 
     '0 12px 48px 0 rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.1)'
+  ]);
+  const navBoxShadowLight = useTransform(smoothScrollY, [0, 150], [
+    '0 0 0 1px rgba(0, 0, 0, 0.08)', 
+    '0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05)'
   ]);
 
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+
+  // Theme toggle
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('claimguard-theme') as 'dark' | 'light') || 'dark';
+    }
+    return 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('claimguard-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
   const navItems: NavItem[] = [
     { id: 'upload', label: 'Workspace', icon: <Home size={18} />, available: true },
@@ -294,11 +316,11 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
           maxWidth: navMaxWidth,
           height: '76px',
           borderRadius: 100,
-          background: navBackground,
+          background: theme === 'light' ? navBackgroundLight : navBackgroundDark,
           backdropFilter: navBackdrop,
           WebkitBackdropFilter: navBackdrop,
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          boxShadow: navBoxShadow,
+          border: theme === 'light' ? '1px solid rgba(0, 0, 0, 0.12)' : '1px solid rgba(255, 255, 255, 0.12)',
+          boxShadow: theme === 'light' ? navBoxShadowLight : navBoxShadowDark,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 22px',
           transform: 'translateZ(0)',
@@ -388,6 +410,20 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
             </div>
           )}
 
+          {/* Theme Toggle */}
+          <ThemeToggleButton onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <motion.div
+              key={theme}
+              initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+              animate={{ rotate: 0, opacity: 1, scale: 1 }}
+              exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </motion.div>
+          </ThemeToggleButton>
+
           {/* AI Dashboard Universe Button */}
           <UniverseButtonWrapper onClick={() => handleNavClick('chat')}>
             <div className="universe-inner">
@@ -428,6 +464,40 @@ function RippleButton({
 // ═══════════════════════════════════════════════════════════════════════════════
 // STYLED COMPONENTS & CSS ANIMATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
+
+const ThemeToggleButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+  }
+
+  [data-theme="light"] & {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.04);
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  [data-theme="light"] &:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #1a1a2e;
+    border-color: rgba(0, 0, 0, 0.15);
+  }
+`;
 
 // ─── Logo Shimmer + Slot Machine ─────────────────────────────────────────────
 
@@ -477,6 +547,21 @@ const LogoLoader = styled.div`
     line-height: 1.2em;
     color: #4ade80;
     animation: ${slotSpin} 6s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+  }
+
+  [data-theme="light"] &::before {
+    background: linear-gradient(
+      90deg,
+      #666 0%, #333 25%, #191919 50%, #333 75%, #666 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  [data-theme="light"] &::after {
+    color: #057642;
   }
 `;
 
@@ -533,6 +618,18 @@ const StyledRippleButton = styled.button`
     }
   }
 
+  [data-theme="light"] & {
+    color: #666666;
+  }
+
+  [data-theme="light"] &:hover {
+    color: #191919;
+  }
+
+  [data-theme="light"] & .ripple-icon {
+    color: #057642;
+  }
+
   &.active {
     color: #4ade80;
 
@@ -570,22 +667,24 @@ const UniverseButtonWrapper = styled.button`
   width: 72px;
   height: 38px;
   overflow: hidden;
-  background: radial-gradient(circle at 40% 40%, rgba(26, 16, 50, 0.6), rgba(10, 10, 20, 0.8));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: radial-gradient(circle at 40% 40%, rgba(0, 210, 255, 0.35), rgba(58, 123, 213, 0.45)), rgba(7, 10, 25, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(0, 210, 255, 0.2);
   box-shadow:
-    inset 0 0 12px rgba(139, 92, 246, 0.15),
-    inset 0 1px 1px rgba(255, 255, 255, 0.1),
-    0 4px 16px rgba(0, 0, 0, 0.4);
-  transition: box-shadow 0.3s, transform 0.2s;
+    inset 0 0 14px rgba(0, 210, 255, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 8px 24px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
   font-family: inherit;
 
   &:hover {
     box-shadow:
-      inset 0 0 18px rgba(139, 92, 246, 0.25),
-      0 8px 32px rgba(139, 92, 246, 0.2),
-      0 0 0 1px rgba(139, 92, 246, 0.15);
-    transform: translateY(-1px);
+      inset 0 0 20px rgba(0, 210, 255, 0.4),
+      0 12px 40px rgba(0, 210, 255, 0.3),
+      0 0 0 1px rgba(0, 210, 255, 0.3);
+    transform: translateY(-2px) scale(1.02);
+    border-color: rgba(0, 210, 255, 0.4);
   }
 
   .universe-inner {
@@ -600,22 +699,22 @@ const UniverseButtonWrapper = styled.button`
   .universe-label {
     position: relative;
     z-index: 2;
-    color: rgba(200, 180, 255, 0.9);
-    font-size: 0.72rem;
+    color: #fff;
+    font-size: 0.75rem;
     font-weight: 800;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     display: flex;
     align-items: center;
-    gap: 4px;
-    text-shadow: 0 0 8px rgba(139, 92, 246, 0.4);
+    gap: 5px;
+    text-shadow: 0 0 12px rgba(0, 210, 255, 0.8);
   }
 
   ${Array.from({ length: 12 }).map((_, i) => {
     const colors = [
-      'rgba(139, 92, 246, 0.4)', 'rgba(99, 102, 241, 0.35)', 'rgba(6, 182, 212, 0.3)',
-      'rgba(168, 85, 247, 0.45)', 'rgba(79, 70, 229, 0.3)', 'rgba(34, 211, 238, 0.25)',
-      'rgba(147, 51, 234, 0.35)', 'rgba(99, 102, 241, 0.4)', 'rgba(6, 182, 212, 0.35)',
-      'rgba(139, 92, 246, 0.3)', 'rgba(168, 85, 247, 0.25)', 'rgba(79, 70, 229, 0.4)',
+      'rgba(0, 210, 255, 0.6)', 'rgba(6, 182, 212, 0.5)', 'rgba(34, 211, 238, 0.4)',
+      'rgba(58, 123, 213, 0.7)', 'rgba(30, 64, 175, 0.5)', 'rgba(8, 145, 178, 0.45)',
+      'rgba(37, 99, 235, 0.55)', 'rgba(14, 165, 233, 0.6)', 'rgba(2, 132, 199, 0.55)',
+      'rgba(56, 189, 248, 0.5)', 'rgba(0, 225, 255, 0.45)', 'rgba(30, 58, 138, 0.6)',
     ];
     const sizes = [6, 8, 5, 9, 7, 10, 6, 8, 5, 7, 9, 6];
     const blurs = [2, 3, 2, 4, 3, 5, 2, 3, 4, 3, 2, 4];

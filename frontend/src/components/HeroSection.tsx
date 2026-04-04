@@ -30,29 +30,35 @@ export default function HeroSection({ onScrollToUpload }: HeroSectionProps) {
     resize();
     window.addEventListener('resize', resize);
 
-    for (let i = 0; i < 35; i++) {
+    // Jittered grid initialization for even spread
+    const rows = 4;
+    const cols = 8;
+    const count = rows * cols;
+    for (let i = 0; i < count; i++) {
+      const rx = i % cols;
+      const ry = Math.floor(i / cols);
       particles.push({
-        x: Math.random() * canvas.offsetWidth,
-        y: Math.random() * canvas.offsetHeight,
-        vx: (Math.random() - 0.5) * 0.25,
-        vy: (Math.random() - 0.5) * 0.2,
-        r: Math.random() * 1.8 + 0.4,
-        o: Math.random() * 0.35 + 0.05,
+        x: (rx / cols) * canvas.offsetWidth + (Math.random() * 40 - 20),
+        y: (ry / rows) * canvas.offsetHeight + (Math.random() * 40 - 20),
+        vx: (Math.random() - 0.5) * 0.1,
+        vy: Math.random() * 0.3 + 0.15,
+        r: Math.random() * 0.8 + 0.6,
+        o: Math.random() * 0.5 + 0.3,
       });
     }
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
       for (const p of particles) {
         p.x += p.vx;
         p.y += p.vy;
         if (p.x < 0) p.x = canvas.offsetWidth;
         if (p.x > canvas.offsetWidth) p.x = 0;
-        if (p.y < 0) p.y = canvas.offsetHeight;
         if (p.y > canvas.offsetHeight) p.y = 0;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${p.o * 0.6})`;
+        ctx.fillStyle = isLight ? `rgba(0, 0, 0, ${p.o * 0.25})` : `rgba(255, 255, 255, ${p.o})`;
         ctx.fill();
       }
       animId = requestAnimationFrame(draw);
@@ -139,11 +145,11 @@ const scrollPulse = keyframes`
 
 const HeroWrapper = styled.section`
   position: relative;
-  min-height: 92vh;
+  min-height: 80vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #050507;
+  background: transparent;
   overflow: visible;
 
   .ambient-glow {
@@ -174,10 +180,10 @@ const HeroWrapper = styled.section`
 
   .hero-headline {
     margin: 0;
-    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    font-size: clamp(2.2rem, 5vw, 4.2rem);
     font-weight: 700;
-    line-height: 1.05;
-    letter-spacing: -0.04em;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
@@ -198,13 +204,14 @@ const HeroWrapper = styled.section`
   }
 
   .white-text {
-    color: rgba(255, 255, 255, 0.88);
+    color: var(--text);
+    opacity: 0.88;
   }
 
   .hero-subtitle {
     margin: 0;
     font-size: clamp(0.95rem, 1.5vw, 1.15rem);
-    color: rgba(180, 180, 200, 0.55);
+    color: var(--muted);
     font-weight: 500;
     letter-spacing: 0.01em;
     max-width: 400px;
@@ -222,8 +229,9 @@ const HeroWrapper = styled.section`
     font-size: 0.65rem;
     font-weight: 700;
     letter-spacing: 0.25em;
-    color: rgba(180, 180, 190, 0.35);
+    color: var(--muted);
     text-transform: uppercase;
+    opacity: 0.7;
   }
 
   .scroll-line {
@@ -251,7 +259,7 @@ const CTAButton = styled.button`
     position: absolute;
     inset: 0;
     border-radius: 999px;
-    background: rgba(15, 15, 20, 0.9);
+    background: var(--bg-card-strong);
     border: 1px solid rgba(74, 222, 128, 0.25);
     box-shadow:
       0 0 30px rgba(74, 222, 128, 0.08),
@@ -269,7 +277,7 @@ const CTAButton = styled.button`
     padding: 16px 36px;
     font-size: 0.92rem;
     font-weight: 700;
-    color: rgba(200, 255, 220, 0.85);
+    color: var(--accent);
     letter-spacing: 0.01em;
     transition: color 0.25s;
   }

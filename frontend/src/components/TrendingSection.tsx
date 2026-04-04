@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { TrendingUp, ArrowRight, Eye, Download, Star, ShieldCheck, FileText, Users } from 'lucide-react';
 
 // ─── Data adapted for EDI ClaimGuard ─────────────────────────────────────────
@@ -91,11 +92,30 @@ const slideInCSS = `
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function TrendingSection() {
+  const [isLight, setIsLight] = useState(document.documentElement.getAttribute('data-theme') === 'light');
+  useEffect(() => {
+    const check = () => setIsLight(document.documentElement.getAttribute('data-theme') === 'light');
+    check(); // Sync on mount in case Navbar already set it
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const bg = isLight ? '#f3f2ef' : 'rgba(5, 9, 7, 1)';
+  const cardBg = isLight ? '#ffffff' : '#0f0f10';
+  const cardHover = isLight ? '#f9f8f6' : '#131313';
+  const textPrimary = isLight ? '#191919' : '#eee';
+  const textSecondary = isLight ? '#666666' : '#666';
+  const borderColor = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.07)';
+  const borderHover = isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.18)';
+  const featureBg = isLight ? '#ffffff' : 'rgba(0, 0, 0, 0.45)';
+  const featureHover = isLight ? '#f9f8f6' : 'rgba(255, 255, 255, 0.04)';
+  const statColor = isLight ? '#191919' : '#fff';
   return (
     <>
       <style>{slideInCSS}</style>
       <section style={{
-        background: 'linear-gradient(180deg, rgba(5, 9, 7, 0) 0%, rgba(5, 9, 7, 1) 8%, rgba(5, 9, 7, 1) 92%, rgba(5, 9, 7, 0) 100%)',
+        background: `linear-gradient(180deg, transparent 0%, ${bg} 8%, ${bg} 92%, transparent 100%)`,
         padding: '64px 0 80px',
         position: 'relative',
         overflow: 'hidden',
@@ -118,7 +138,7 @@ export default function TrendingSection() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
                 <TrendingUp size={22} color="#4ade80" />
-                <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
+                <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: textPrimary, letterSpacing: '-0.02em' }}>
                   Supported Transactions
                 </h2>
               </div>
@@ -130,8 +150,8 @@ export default function TrendingSection() {
                     className="animate-slide-in group"
                     style={{
                       animationDelay: `${index * 0.1}s`,
-                      background: '#0f0f10',
-                      border: '1px solid rgba(255, 255, 255, 0.07)',
+                      background: cardBg,
+                      border: `1px solid ${borderColor}`,
                       borderRadius: 18,
                       padding: '16px 18px',
                       display: 'flex',
@@ -141,13 +161,13 @@ export default function TrendingSection() {
                       transition: 'border-color 0.25s, background 0.25s, transform 0.25s',
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
-                      e.currentTarget.style.background = '#131313';
+                      e.currentTarget.style.borderColor = borderHover;
+                      e.currentTarget.style.background = cardHover;
                       e.currentTarget.style.transform = 'translateY(-2px)';
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.07)';
-                      e.currentTarget.style.background = '#0f0f10';
+                      e.currentTarget.style.borderColor = borderColor;
+                      e.currentTarget.style.background = cardBg;
                       e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
@@ -156,7 +176,7 @@ export default function TrendingSection() {
                       width: 48, height: 48, borderRadius: 14, flexShrink: 0,
                       display: 'grid', placeItems: 'center',
                       fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.04em',
-                      color: '#fff',
+                      color: statColor,
                       background: `linear-gradient(135deg, var(--tw-gradient-stops, ${tx.gradient.includes('emerald') ? '#34d399, #16a34a' : tx.gradient.includes('cyan') ? '#22d3ee, #14b8a6' : tx.gradient.includes('blue') ? '#3b82f6, #6366f1' : '#a855f7, #8b5cf6'}))`,
                       boxShadow: `0 8px 24px ${tx.shadow}`,
                     }}>
@@ -167,7 +187,7 @@ export default function TrendingSection() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{
-                          fontWeight: 700, fontSize: '0.92rem', color: '#eee',
+                          fontWeight: 700, fontSize: '0.92rem', color: textPrimary,
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>
                           {tx.name}
@@ -186,7 +206,7 @@ export default function TrendingSection() {
                       </div>
                       <div style={{
                         display: 'flex', alignItems: 'center', gap: 12,
-                        marginTop: 4, fontSize: '0.78rem', color: '#666',
+                        marginTop: 4, fontSize: '0.78rem', color: textSecondary,
                       }}>
                         <span>{tx.papers} validation rules</span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -211,9 +231,9 @@ export default function TrendingSection() {
                 <button
                   style={{
                     width: '100%', marginTop: 8, padding: '14px 0',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    border: `1px solid ${borderColor}`,
                     borderRadius: 16, background: 'transparent',
-                    color: '#888', fontWeight: 700, fontSize: '0.85rem',
+                    color: textSecondary, fontWeight: 700, fontSize: '0.85rem',
                     cursor: 'pointer', transition: 'all 0.2s',
                     fontFamily: 'inherit',
                   }}
@@ -223,8 +243,8 @@ export default function TrendingSection() {
                     e.currentTarget.style.background = 'rgba(74, 222, 128, 0.04)';
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                    e.currentTarget.style.color = '#888';
+                    e.currentTarget.style.borderColor = borderColor;
+                    e.currentTarget.style.color = textSecondary;
                     e.currentTarget.style.background = 'transparent';
                   }}
                 >
@@ -237,15 +257,15 @@ export default function TrendingSection() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
                 <Star size={22} color="#fbbf24" />
-                <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
+                <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: textPrimary, letterSpacing: '-0.02em' }}>
                   Top Features This Build
                 </h2>
               </div>
 
               <div style={{
                 position: 'relative',
-                background: '#0f0f10',
-                border: '1px solid rgba(255, 255, 255, 0.07)',
+                background: cardBg,
+                border: `1px solid ${borderColor}`,
                 borderRadius: 22, padding: 18, overflow: 'hidden',
               }}>
                 {/* Soft amber glow */}
@@ -262,20 +282,20 @@ export default function TrendingSection() {
                       className="animate-slide-in"
                       style={{
                         animationDelay: `${(index + 4) * 0.1}s`,
-                        background: 'rgba(0, 0, 0, 0.45)',
-                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        background: featureBg,
+                        border: `1px solid ${borderColor}`,
                         borderRadius: 16, padding: '14px 16px',
                         display: 'flex', alignItems: 'center', gap: 14,
                         cursor: 'pointer', transition: 'all 0.25s',
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                        e.currentTarget.style.background = featureHover;
+                        e.currentTarget.style.borderColor = borderHover;
                         e.currentTarget.style.transform = 'translateX(4px)';
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = 'rgba(0, 0, 0, 0.45)';
-                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+                        e.currentTarget.style.background = featureBg;
+                        e.currentTarget.style.borderColor = borderColor;
                         e.currentTarget.style.transform = 'translateX(0)';
                       }}
                     >
@@ -283,7 +303,7 @@ export default function TrendingSection() {
                       <div style={{
                         width: 36, height: 36, borderRadius: 10, flexShrink: 0,
                         display: 'grid', placeItems: 'center',
-                        fontWeight: 800, fontSize: '0.85rem', color: '#fff',
+                        fontWeight: 800, fontSize: '0.85rem', color: statColor,
                         background: 'linear-gradient(135deg, #fbbf24, #f97316)',
                         boxShadow: '0 6px 18px rgba(251, 191, 36, 0.25)',
                       }}>
@@ -293,7 +313,7 @@ export default function TrendingSection() {
                       {/* Details */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
-                          fontWeight: 700, fontSize: '0.88rem', color: '#eee',
+                          fontWeight: 700, fontSize: '0.88rem', color: textPrimary,
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>
                           {feature.title}
@@ -330,7 +350,7 @@ export default function TrendingSection() {
                 {/* Bottom stat bar */}
                 <div style={{
                   display: 'flex', justifyContent: 'space-around', marginTop: 16,
-                  padding: '14px 0', borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                  padding: '14px 0', borderTop: `1px solid ${borderColor}`,
                   position: 'relative', zIndex: 1,
                 }}>
                   {[
@@ -340,7 +360,7 @@ export default function TrendingSection() {
                   ].map(stat => (
                     <div key={stat.label} style={{ textAlign: 'center' }}>
                       <div style={{
-                        fontWeight: 800, fontSize: '1.2rem', color: '#fff',
+                        fontWeight: 800, fontSize: '1.2rem', color: statColor,
                         letterSpacing: '-0.02em',
                       }}>
                         {stat.value}

@@ -10,6 +10,7 @@
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.15);
   --text: #ffffff;
+  --text-secondary: #cccccc;
   --muted: #888888;
   --muted-strong: #aaaaaa;
   --accent: #4ade80;
@@ -19,6 +20,246 @@
   --amber: #ffb454;
   --red: #ff6f7d;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.65);
+  --surface: rgba(255, 255, 255, 0.03);
+  --surface-hover: rgba(255, 255, 255, 0.06);
+  --overlay: rgba(0, 0, 0, 0.5);
+  --code-bg: #1a1a2e;
+  --input-bg: rgba(255, 255, 255, 0.04);
+}
+
+/* ═══ LIGHT MODE — LinkedIn-style (Green Accent) ═══ */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f2ef;
+  --bg-elevated: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-strong: #ffffff;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.15);
+  --text: #191919;
+  --text-secondary: #333333;
+  --muted: #666666;
+  --muted-strong: #444444;
+  --accent: #057642;
+  --accent-strong: #045630;
+  --teal: #057642;
+  --green: #16a34a;
+  --amber: #b45309;
+  --red: #cc1016;
+  --shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05);
+  --surface: rgba(0, 0, 0, 0.03);
+  --surface-hover: rgba(0, 0, 0, 0.05);
+  --overlay: rgba(255, 255, 255, 0.75);
+  --code-bg: #f3f2ef;
+  --input-bg: rgba(0, 0, 0, 0.03);
+}
+
+/* Light mode scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #f3f2ef;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Light mode global backgrounds */
+[data-theme="light"] .app-bg-primary {
+  background: radial-gradient(circle at 15% 10%, rgba(5, 118, 66, 0.03), transparent 40%);
+}
+[data-theme="light"] .app-bg-secondary {
+  background: radial-gradient(circle at 90% 75%, rgba(5, 118, 66, 0.02), transparent 35%);
+}
+
+/* Light mode glass card — LinkedIn white cards */
+[data-theme="light"] .glass-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+  backdrop-filter: none;
+  border-radius: 8px;
+}
+[data-theme="light"] .glass-card-hover:hover {
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Light mode topbar */
+[data-theme="light"] .topbar {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  backdrop-filter: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+/* Light mode surfaces */
+[data-theme="light"] .surface-panel {
+  background: #f3f2ef;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .validation-item {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Light mode buttons — LinkedIn green */
+[data-theme="light"] .btn-primary {
+  color: #fff;
+  background: #057642;
+  box-shadow: none;
+  border-radius: 24px;
+}
+[data-theme="light"] .btn-primary:hover {
+  background: #045630;
+}
+[data-theme="light"] .btn-secondary {
+  color: #057642;
+  background: transparent;
+  border: 1px solid #057642;
+  border-radius: 24px;
+}
+[data-theme="light"] .btn-success {
+  color: #fff;
+  background: #057642;
+}
+
+/* Light mode badges */
+[data-theme="light"] .badge-info {
+  color: #057642;
+  background: rgba(5, 118, 66, 0.08);
+  border: 1px solid rgba(5, 118, 66, 0.15);
+}
+[data-theme="light"] .badge-success {
+  color: #057642;
+  background: rgba(5, 118, 66, 0.08);
+  border: 1px solid rgba(5, 118, 66, 0.15);
+}
+[data-theme="light"] .badge-warning {
+  color: #915907;
+  background: rgba(180, 83, 9, 0.08);
+  border: 1px solid rgba(180, 83, 9, 0.15);
+}
+[data-theme="light"] .badge-error {
+  color: #cc1016;
+  background: rgba(204, 16, 22, 0.06);
+  border: 1px solid rgba(204, 16, 22, 0.15);
+}
+
+/* Light mode tabs and toggles */
+[data-theme="light"] .topbar-nav {
+  background: #f3f2ef;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .tab-pill-active {
+  color: #fff;
+  background: #057642;
+  box-shadow: none;
+  border-radius: 24px;
+}
+[data-theme="light"] .toggle-group {
+  background: #f3f2ef;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .toggle-button.active {
+  color: #057642;
+  background: rgba(5, 118, 66, 0.08);
+  font-weight: 600;
+}
+
+/* Light mode meta blocks */
+[data-theme="light"] .meta-block {
+  background: #f3f2ef;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Light mode drop zone */
+[data-theme="light"] .drop-zone {
+  border-color: rgba(5, 118, 66, 0.2);
+  background: #ffffff;
+}
+
+/* Light mode composer / input */
+[data-theme="light"] .composer {
+  background: #f3f2ef;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Light mode brand badge */
+[data-theme="light"] .brand-badge {
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(5, 118, 66, 0.2);
+}
+
+/* Light mode workspace popup */
+[data-theme="light"] .workspace-popup {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+}
+[data-theme="light"] .popup-title {
+  color: #057642;
+  background: #f3f2ef;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Light mode sample-button and quick-card */
+[data-theme="light"] .sample-button,
+[data-theme="light"] .quick-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .sample-button:hover,
+[data-theme="light"] .quick-card:hover {
+  background: #f3f2ef;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Light mode progress bar */
+[data-theme="light"] .progress-rail {
+  background: rgba(0, 0, 0, 0.06);
+}
+[data-theme="light"] .progress-bar {
+  background: linear-gradient(90deg, transparent, #057642, #16a34a, transparent);
+}
+
+/* Light mode eyebrow tags */
+[data-theme="light"] .eyebrow,
+[data-theme="light"] .results-eyebrow,
+[data-theme="light"] .metric-label {
+  color: #666666;
+  background: #e8e6e1;
+}
+
+/* Light mode status chips */
+[data-theme="light"] .status-chip {
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #444444;
+  background: #f3f2ef;
+}
+
+/* Light mode message bubbles */
+[data-theme="light"] .user-bubble {
+  background: rgba(5, 118, 66, 0.06);
+  border-color: rgba(5, 118, 66, 0.1);
+}
+[data-theme="light"] .assistant-bubble {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Light mode footer */
+[data-theme="light"] .app-footer {
+  color: #666666;
+  border-top-color: rgba(0, 0, 0, 0.08);
 }
 
 * {
@@ -70,12 +311,16 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(74, 222, 128, 0.2);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(74, 222, 128, 0.4);
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 @keyframes fadeIn {
@@ -107,7 +352,7 @@ a {
 .app-shell {
   position: relative;
   min-height: 100vh;
-  padding: 24px;
+  padding: 0;
 }
 
 .app-frame {
@@ -122,12 +367,20 @@ a {
   pointer-events: none;
 }
 
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(10%, -5%) scale(1.1); }
+  66% { transform: translate(-5%, 10%) scale(0.9); }
+}
+
 .app-bg-primary {
-  background: radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.012), transparent 28%);
+  background: radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.015), transparent 32%);
+  animation: drift 20s ease-in-out infinite alternate;
 }
 
 .app-bg-secondary {
-  background: radial-gradient(circle at 90% 75%, rgba(255, 255, 255, 0.008), transparent 20%);
+  background: radial-gradient(circle at 90% 75%, rgba(255, 255, 255, 0.01), transparent 25%);
+  animation: drift 25s ease-in-out infinite alternate-reverse;
 }
 
 .app-bg-grid {
