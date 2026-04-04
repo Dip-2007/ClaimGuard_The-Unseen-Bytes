@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import styled, { keyframes } from 'styled-components';
 import { Home, ShieldCheck, MessageSquare, Plus, FileDown, Bot } from 'lucide-react';
 
@@ -22,6 +22,12 @@ interface NavbarProps {
 
 // ─── Navbar Component ────────────────────────────────────────────────────────
 export default function Navbar({ activeTab, onTabChange, hasResults, onExport }: NavbarProps) {
+  const { scrollY } = useScroll();
+  const navMaxWidth = useTransform(scrollY, [0, 150], ["1400px", "1000px"]);
+  const navBackground = useTransform(scrollY, [0, 150], ['rgba(22, 22, 22, 0.72)', 'rgba(15, 15, 16, 0.88)']);
+  const navBackdrop = useTransform(scrollY, [0, 150], ['blur(24px)', 'blur(32px)']);
+  const navBoxShadow = useTransform(scrollY, [0, 150], ['0 24px 80px rgba(0,0,0,0.45)', '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255, 255, 255, 0.08)']);
+
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -58,11 +64,11 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
         background: 'rgba(15, 15, 16, 0.82)', backdropFilter: 'blur(24px)',
-        borderBottom: '1px solid rgba(74, 222, 128, 0.12)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         padding: '12px 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <div style={{ height: '2px', position: 'absolute', top: 0, left: 0, right: 0, background: 'linear-gradient(90deg, transparent, rgba(74, 222, 128, 0.6), rgba(61, 217, 193, 0.4), transparent)' }} />
+        <div style={{ height: '2px', position: 'absolute', top: 0, left: 0, right: 0, background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), rgba(200, 200, 200, 0.2), transparent)' }} />
         <LogoLoader />
         {hasResults && onExport && (
           <div style={{ position: 'relative' }}>
@@ -265,30 +271,21 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
         display: 'flex', justifyContent: 'center',
-        padding: scrolled ? '8px 24px' : '16px 24px',
-        transition: 'padding 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+        padding: '16px 24px',
       }}
     >
       <motion.div
-        animate={{
-          maxWidth: scrolled ? 1100 : 1400,
-          height: scrolled ? 62 : 76,
-        }}
-        transition={{ type: 'spring', stiffness: 200, damping: 28 }}
         style={{
           width: '100%',
-          borderRadius: 28,
-          background: scrolled
-            ? 'rgba(15, 15, 16, 0.88)'
-            : 'rgba(22, 22, 22, 0.72)',
-          backdropFilter: scrolled ? 'blur(32px)' : 'blur(24px)',
-          border: '1px solid rgba(74, 222, 128, 0.12)',
-          boxShadow: scrolled
-            ? '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(74, 222, 128, 0.06)'
-            : '0 24px 80px rgba(0,0,0,0.45)',
+          maxWidth: navMaxWidth,
+          height: '76px',
+          borderRadius: 100,
+          background: navBackground,
+          backdropFilter: navBackdrop,
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          boxShadow: navBoxShadow,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 22px',
-          transition: 'background 0.35s, border 0.35s, box-shadow 0.35s',
         }}
       >
         {/* Left — Logo */}
@@ -422,28 +419,28 @@ const shimmer = keyframes`
 `;
 
 const slotSpin = keyframes`
-  0% { transform: translateY(0); }
-  20% { transform: translateY(0); }
-  25% { transform: translateY(-25%); }
-  45% { transform: translateY(-25%); }
-  50% { transform: translateY(-50%); }
-  70% { transform: translateY(-50%); }
-  75% { transform: translateY(-75%); }
-  95% { transform: translateY(-75%); }
-  100% { transform: translateY(0); }
+  0%, 20% { transform: translateY(0); }
+  33.33%, 53.33% { transform: translateY(-25%); }
+  66.66%, 86.66% { transform: translateY(-50%); }
+  100% { transform: translateY(-75%); }
 `;
 
 const LogoLoader = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0;
   font-weight: 800;
   font-size: 1rem;
   letter-spacing: 0.04em;
   user-select: none;
+  height: 1.2em;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0%, black 15%, black 85%, rgba(0,0,0,0) 100%);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0%, black 15%, black 85%, rgba(0,0,0,0) 100%);
 
   &::before {
     content: 'CLAIMGUARD-';
+    line-height: 1.2em;
     background: linear-gradient(
       90deg,
       #888 0%, #ccc 25%, #fff 50%, #ccc 75%, #888 100%
@@ -456,27 +453,11 @@ const LogoLoader = styled.div`
   }
 
   &::after {
-    content: 'PARSE\\AVALIDATE\\AREPAIR\\APARSE';
+    content: 'PARSE\\A VALIDATE\\A RESOLVE\\A PARSE';
     white-space: pre;
     display: inline-block;
-    height: 1.2em;
-    overflow: hidden;
     line-height: 1.2em;
     color: #4ade80;
-    mask-image: linear-gradient(
-      to bottom,
-      transparent 0%,
-      black 30%,
-      black 70%,
-      transparent 100%
-    );
-    -webkit-mask-image: linear-gradient(
-      to bottom,
-      transparent 0%,
-      black 30%,
-      black 70%,
-      transparent 100%
-    );
     animation: ${slotSpin} 6s cubic-bezier(0.23, 1, 0.32, 1) infinite;
   }
 `;
