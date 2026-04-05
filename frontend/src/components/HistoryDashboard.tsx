@@ -21,8 +21,8 @@ type FilterId = 'all' | 'needs_fixing' | 'clean' | 'chat';
 
 interface HistoryDashboardProps {
   getAuthHeaders: () => Record<string, string>;
-  onViewResult?: (metadata: any) => void;
-  onContinueFixing?: (metadata: any) => void;
+  onViewResult?: (activityId: string, metadata: any) => void;
+  onContinueFixing?: (activityId: string, metadata: any) => void;
   isGuest?: boolean;
 }
 
@@ -237,8 +237,8 @@ function FilterBar({ active, onChange, counts }: {
 
 function ActivityCard({ activity, index, onViewResult, onContinueFixing, onDownload }: {
   activity: ActivityItem; index: number;
-  onViewResult?: (metadata: any) => void;
-  onContinueFixing?: (metadata: any) => void;
+  onViewResult?: (activityId: string, metadata: any) => void;
+  onContinueFixing?: (activityId: string, metadata: any) => void;
   onDownload?: (activityId: string, filename: string) => Promise<void>;
 }) {
   const status = getFileStatus(activity);
@@ -315,7 +315,7 @@ function ActivityCard({ activity, index, onViewResult, onContinueFixing, onDownl
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {status === 'needs_fixing' && onContinueFixing && (
              <ActionButton
-               onClick={() => onContinueFixing(activity.metadata)}
+               onClick={() => onContinueFixing(activity.id, activity.metadata)}
                icon={<ArrowUpRight size={14} />}
                label="Continue Fixing"
                color="#ef4444"
@@ -325,7 +325,7 @@ function ActivityCard({ activity, index, onViewResult, onContinueFixing, onDownl
 
           {status === 'clean' && onViewResult && (
              <ActionButton
-               onClick={() => onViewResult(activity.metadata)}
+               onClick={() => onViewResult(activity.id, activity.metadata)}
                icon={<BarChart3 size={14} />}
                label="View Analytics"
                color="#4ade80"
