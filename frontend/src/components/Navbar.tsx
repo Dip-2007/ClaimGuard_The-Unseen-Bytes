@@ -666,7 +666,7 @@ const UniverseButtonWrapper = styled.button`
       filter: blur(${[2, 3, 2, 4, 3, 5, 2, 3, 4, 3, 2, 4][i]}px);
       left: ${[15, 55, 75, 25, 65, 40, 80, 10, 50, 35, 70, 20][i]}%;
       top: ${[20, 60, 30, 70, 15, 50, 75, 45, 25, 65, 40, 55][i]}%;
-      animation: ${orbitAnim(i + 1)} ${3 + (i % 4) * 0.8}s ease-in-out infinite;
+      animation: ${orbitAnim(i + 1).getName()} ${3 + (i % 4) * 0.8}s ease-in-out infinite;
       animation-delay: ${i * 0.15}s;
     }
   `).join('\n')}

@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+__pycache__/
+*.pyc
+*.pyo
+
 .env
 # Editor directories and files
 .vscode/*
