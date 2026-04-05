@@ -117,7 +117,7 @@ function AnalyticsPanel({ activities }: { activities: ActivityItem[] }) {
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                 style={{
                   width: '100%', maxWidth: 28, borderRadius: 5,
-                  background: count > 0 ? 'linear-gradient(to top, rgba(74,222,128,0.3), rgba(74,222,128,0.7))' : 'rgba(255,255,255,0.04)',
+                  background: count > 0 ? 'linear-gradient(to top, rgba(74,222,128,0.4), rgba(74,222,128,0.8))' : 'var(--border)',
                   boxShadow: count > 0 ? '0 4px 12px rgba(74,222,128,0.15)' : 'none',
                 }}
               />
@@ -147,17 +147,17 @@ function AnalyticsPanel({ activities }: { activities: ActivityItem[] }) {
               const c = colors[type] || '#ffab00';
               return (
                 <div key={type} style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 16px', borderRadius: 14,
-                  background: `${c}10`, border: `1px solid ${c}25`, flex: '1 1 130px',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 16px', borderRadius: 14,
+                  background: `${c}10`, border: `1px solid ${c}25`, flex: '1 1 180px',
                 }}>
                   <div style={{
-                    width: 34, height: 34, borderRadius: 10, background: `${c}18`,
-                    display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: '0.78rem', color: c,
-                  }}>{type}</div>
-                  <div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)' }}>{count}</div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 600 }}>{labels[type] || type}</div>
+                    minWidth: 38, height: 38, padding: '0 8px', borderRadius: 10, background: `${c}18`,
+                    display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 800, fontSize: '0.78rem', color: c,
+                  }}>{type === 'Unknown' ? 'UNK' : type}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{count}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{labels[type] || type}</div>
                   </div>
                 </div>
               );
@@ -235,10 +235,11 @@ function FilterBar({ active, onChange, counts }: {
 
 // ─── Activity Card ───────────────────────────────────────────────────
 
-function ActivityCard({ activity, index, onViewResult, onContinueFixing }: {
+function ActivityCard({ activity, index, onViewResult, onContinueFixing, onDownload }: {
   activity: ActivityItem; index: number;
   onViewResult?: (metadata: any) => void;
   onContinueFixing?: (metadata: any) => void;
+  onDownload?: (activityId: string, filename: string) => Promise<void>;
 }) {
   const status = getFileStatus(activity);
   const cfg = statusConfig[status];
@@ -342,9 +343,15 @@ function ActivityCard({ activity, index, onViewResult, onContinueFixing }: {
              />
           )}
 
-          {isUpload && activity.metadata?.cloudinary_url && (
+          {isUpload && (
              <ActionLink
-               href={activity.metadata.cloudinary_url}
+               href={activity.metadata?.cloudinary_url || '#'}
+               onClick={activity.metadata?.cloudinary_url ? undefined : (e) => {
+                 e.preventDefault();
+                 if (onDownload) {
+                   onDownload(activity.id, activity.metadata?.file_name || 'download.edi');
+                 }
+               }}
                icon={<Download size={14} />}
                label="Download EDI"
              />
@@ -384,12 +391,13 @@ function ActionButton({ onClick, icon, label, color, primary }: {
   );
 }
 
-function ActionLink({ href, icon, label, accent }: {
-  href: string; icon: React.ReactNode; label: string; accent?: boolean;
+function ActionLink({ href, icon, label, accent, onClick }: {
+  href: string; icon: React.ReactNode; label: string; accent?: boolean; onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   return (
     <a
       href={href} target="_blank" rel="noreferrer"
+      onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 5,
         padding: '7px 14px', borderRadius: 10, fontSize: '0.78rem',
@@ -430,6 +438,29 @@ export default function HistoryDashboard({ getAuthHeaders, onViewResult, onConti
       setLoading(false);
     }
   }, [getAuthHeaders, isGuest]);
+
+  const handleDownload = useCallback(async (activityId: string, filename: string) => {
+    try {
+      const res = await fetch(`/api/download-activity/${activityId}`, {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) {
+        throw new Error('Failed to download file');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Failed to securely download file.');
+    }
+  }, [getAuthHeaders]);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
@@ -601,6 +632,7 @@ export default function HistoryDashboard({ getAuthHeaders, onViewResult, onConti
               index={idx}
               onViewResult={onViewResult}
               onContinueFixing={onContinueFixing}
+              onDownload={handleDownload}
             />
           ))}
         </div>

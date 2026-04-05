@@ -121,7 +121,8 @@ async def upload_file(
             # Upload to Cloudinary
             cloud_result = upload_to_cloudinary(content, file.filename or "upload.edi")
             cloudinary_url = cloud_result.get("url", "")
-        except Exception:
+        except Exception as e:
+            print(f"Cloudinary upload failed: {e}")
             cloudinary_url = ""
 
         await db.activities.insert_one({
@@ -132,6 +133,7 @@ async def upload_file(
             "file_name": file.filename or "upload.edi",
             "transaction_type": parse_result.transaction_type,
             "cloudinary_url": cloudinary_url,
+            "raw_content": raw,
             "error_count": validation.error_count,
             "warning_count": validation.warning_count,
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -618,6 +620,28 @@ async def get_history(current_user: dict = Depends(get_current_user)):
         ))
 
     return HistoryResponse(activities=activities, total=len(activities))
+
+@app.get("/api/download-activity/{activity_id}")
+async def download_activity(activity_id: str, current_user: dict = Depends(get_current_user)):
+    """Download the raw EDI file directly from the cloud database."""
+    if not current_user:
+        raise HTTPException(401, "Not authenticated")
+        
+    db = get_db()
+    from bson.objectid import ObjectId
+    try:
+        activity = await db.activities.find_one({"_id": ObjectId(activity_id), "user_id": current_user["sub"]})
+        if not activity or "raw_content" not in activity:
+            raise HTTPException(404, "File content not found in cloud database")
+            
+        filename = activity.get("file_name", "download.edi")
+        return Response(
+            content=activity["raw_content"],
+            media_type="text/plain",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+    except Exception as e:
+        raise HTTPException(400, f"Download error: {str(e)}")
 
 
 @app.get("/api/user/chats")
