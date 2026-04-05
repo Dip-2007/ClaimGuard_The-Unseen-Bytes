@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import styled, { keyframes } from 'styled-components';
-import { Home, ShieldCheck, MessageSquare, Plus, FileDown, Bot, Sun, Moon } from 'lucide-react';
+import { Home, ShieldCheck, MessageSquare, Plus, FileDown, Bot, Sun, Moon, LogOut, User, History } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type TabId = 'upload' | 'results' | 'chat';
+type TabId = 'upload' | 'results' | 'chat' | 'history';
 
 interface NavItem {
   id: TabId;
@@ -18,10 +18,13 @@ interface NavbarProps {
   onTabChange: (tab: TabId) => void;
   hasResults: boolean;
   onExport?: (format: string) => void;
+  user?: { id: string; name: string; email: string } | null;
+  isGuest?: boolean;
+  onLogout?: () => void;
 }
 
 // ─── Navbar Component ────────────────────────────────────────────────────────
-export default function Navbar({ activeTab, onTabChange, hasResults, onExport }: NavbarProps) {
+export default function Navbar({ activeTab, onTabChange, hasResults, onExport, user, onLogout }: NavbarProps) {
   const { scrollY } = useScroll();
   const smoothScrollY = useSpring(scrollY, { stiffness: 60, damping: 22, restDelta: 0.001 });
   
@@ -40,9 +43,10 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
     '0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05)'
   ]);
 
-  const [scrolled, setScrolled] = useState(false);
+  const [scrolled, _setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Theme toggle
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -63,12 +67,13 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
     { id: 'upload', label: 'Workspace', icon: <Home size={18} />, available: true },
     { id: 'results', label: 'Results', icon: <ShieldCheck size={18} />, available: hasResults },
     { id: 'chat', label: 'AI Guide', icon: <MessageSquare size={18} />, available: true },
+    { id: 'history', label: 'History', icon: <History size={18} />, available: !!user },
   ];
 
   const availableItems = navItems.filter(i => i.available);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => _setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -433,6 +438,68 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
               <span className="universe-label"><Bot size={14} /> AI</span>
             </div>
           </UniverseButtonWrapper>
+
+          {/* User Menu */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              style={{
+                width: 38, height: 38, borderRadius: '50%',
+                background: user ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'rgba(255,255,255,0.08)',
+                border: user ? '2px solid rgba(74, 222, 128, 0.3)' : '1px solid rgba(255,255,255,0.12)',
+                cursor: 'pointer', display: 'grid', placeItems: 'center',
+                color: user ? '#fff' : '#888', fontSize: '0.75rem', fontWeight: 700,
+                fontFamily: 'inherit', transition: 'all 0.2s',
+              }}
+              title={user ? user.name : 'Guest'}
+            >
+              {user ? user.name.charAt(0).toUpperCase() : <User size={16} />}
+            </button>
+            <AnimatePresence>
+              {userMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  style={{
+                    position: 'absolute', right: 0, top: '100%', marginTop: 8,
+                    background: theme === 'light' ? 'rgba(255,255,255,0.98)' : 'rgba(18, 18, 18, 0.98)',
+                    border: theme === 'light' ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 16, padding: 8, minWidth: 200, backdropFilter: 'blur(24px)',
+                    boxShadow: '0 24px 80px rgba(0,0,0,0.65)', zIndex: 999,
+                  }}
+                >
+                  {user ? (
+                    <div style={{ padding: '8px 12px', marginBottom: 4 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: theme === 'light' ? '#1a1a2e' : '#fff' }}>{user.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#888', marginTop: 2 }}>{user.email}</div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '8px 12px', marginBottom: 4 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: theme === 'light' ? '#1a1a2e' : '#fff' }}>Guest User</div>
+                      <div style={{ fontSize: '0.75rem', color: '#888', marginTop: 2 }}>History not tracked</div>
+                    </div>
+                  )}
+                  <div style={{ height: 1, background: theme === 'light' ? '#e0dfdc' : 'rgba(255,255,255,0.06)', margin: '4px 0' }} />
+                  {onLogout && (
+                    <button
+                      onClick={() => { setUserMenuOpen(false); onLogout(); }}
+                      style={{
+                        display: 'flex', width: '100%', padding: '10px 12px', border: 0, borderRadius: 10,
+                        background: 'transparent', color: '#ef4444', cursor: 'pointer', alignItems: 'center',
+                        gap: 8, fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <LogOut size={14} /> {user ? 'Sign Out' : 'Exit Guest Mode'}
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </motion.div>
     </motion.nav>

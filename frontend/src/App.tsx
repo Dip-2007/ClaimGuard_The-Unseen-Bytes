@@ -9,8 +9,10 @@ import EnrollmentDashboard from './components/EnrollmentDashboard';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import TrendingSection from './components/TrendingSection';
+import AuthScreen from './components/AuthScreen';
+import HistoryDashboard from './components/HistoryDashboard';
 
-type TabId = 'upload' | 'results' | 'chat';
+type TabId = 'upload' | 'results' | 'chat' | 'history';
 type SectionId = 'validation' | 'parsed' | 'summary';
 
 interface ParseData {
@@ -21,6 +23,45 @@ interface ParseData {
 }
 
 export default function App() {
+  // Auth state
+  const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('claimguard_token'));
+  const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(() => {
+    const stored = localStorage.getItem('claimguard_user');
+    return stored ? JSON.parse(stored) : null;
+  });
+  const [isGuest, setIsGuest] = useState<boolean>(() => localStorage.getItem('claimguard_guest') === 'true');
+
+  const handleAuth = useCallback((token: string, userData: { id: string; name: string; email: string }) => {
+    setAuthToken(token);
+    setUser(userData);
+    setIsGuest(false);
+    localStorage.removeItem('claimguard_guest');
+  }, []);
+
+  const handleGuest = useCallback(() => {
+    setIsGuest(true);
+    localStorage.setItem('claimguard_guest', 'true');
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setAuthToken(null);
+    setUser(null);
+    setIsGuest(false);
+    localStorage.removeItem('claimguard_token');
+    localStorage.removeItem('claimguard_user');
+    localStorage.removeItem('claimguard_guest');
+  }, []);
+
+  // Helper to get auth headers for API calls
+  const getAuthHeaders = useCallback((): Record<string, string> => {
+    if (authToken) {
+      return { 'Authorization': `Bearer ${authToken}` };
+    }
+    return {};
+  }, [authToken]);
+
+
+  // Main app state
   const [activeTab, setActiveTab] = useState<TabId>('upload');
   const [activeSection, setActiveSection] = useState<SectionId>('validation');
   const fileUploadRef = useRef<HTMLDivElement>(null);
@@ -47,7 +88,10 @@ export default function App() {
       try {
         const res = await fetch('/api/remittance-summary', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          },
           body: JSON.stringify({ raw_content: data.parse_result.raw_content }),
         });
         const summary = await res.json();
@@ -63,7 +107,10 @@ export default function App() {
       try {
         const res = await fetch('/api/enrollment-summary', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          },
           body: JSON.stringify({ raw_content: data.parse_result.raw_content }),
         });
         const summary = await res.json();
@@ -82,7 +129,10 @@ export default function App() {
       try {
         const res = await fetch('/api/fix', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          },
           body: JSON.stringify({
             error_id: errorId,
             fix_value: fixValue,
@@ -119,7 +169,10 @@ export default function App() {
     try {
       const res = await fetch('/api/fix-all', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
         body: JSON.stringify({ raw_content: rawContent }),
       });
       const data = await res.json();
@@ -148,7 +201,10 @@ export default function App() {
     try {
       const res = await fetch('/api/validate-raw', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
         body: JSON.stringify({ raw_content: newRawContent }),
       });
       const data = await res.json();
@@ -177,8 +233,11 @@ export default function App() {
       try {
         const res = await fetch('/api/export', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ raw_content: rawContent, format }),
+          headers: { 
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          },
+          body: JSON.stringify({ raw_content: rawContent, format: format }),
         });
 
         if (format === 'json') {
@@ -207,14 +266,21 @@ export default function App() {
     [rawContent],
   );
 
+
+  // Show auth screen if user is not authenticated and not a guest
+  if (!authToken && !isGuest) {
+    return <AuthScreen onAuth={handleAuth} onGuest={handleGuest} />;
+  }
+
   if (activeTab === 'chat') {
     return (
       <>
-        <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} />
+        <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} user={user} onLogout={handleLogout} />
         <AIChatPanel
           context={rawContent || undefined}
           parsedContext={parseData ? JSON.stringify(parseData.parse_result, null, 2) : undefined}
           onBack={() => setActiveTab(parseData ? 'results' : 'upload')}
+          getAuthHeaders={getAuthHeaders}
         />
       </>
     );
@@ -227,7 +293,7 @@ export default function App() {
         <div className="app-bg app-bg-secondary" />
         <div className="app-bg app-bg-grid" />
 
-        <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} />
+        <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} user={user} isGuest={isGuest} onLogout={handleLogout} />
 
         <div className="app-frame">
 
@@ -246,9 +312,24 @@ export default function App() {
                 onFileProcessed={handleFileProcessed} 
                 onRawContent={(c) => { setRawContent(c); setInitialRawContent(c); }} 
                 onLoading={setLoading} 
+                getAuthHeaders={getAuthHeaders}
               />
 
               <TrendingSection />
+            </section>
+          )}
+
+          {activeTab === 'history' && (
+            <section className="history-layout animate-fade-in">
+              <HistoryDashboard 
+                getAuthHeaders={getAuthHeaders} 
+                isGuest={isGuest}
+                onViewResult={(metadata) => {
+                  if (metadata.cloudinary_url) {
+                    window.open(metadata.cloudinary_url, '_blank');
+                  }
+                }}
+              />
             </section>
           )}
 
