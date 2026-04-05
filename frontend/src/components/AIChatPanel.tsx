@@ -122,7 +122,25 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
 
   const effectiveContext = localAttachment ? localAttachment.content : globalContext;
 
-  // No local storage bleed across users. Sessions exist only in memory or MongoDB.
+  useEffect(() => {
+    const stored = localStorage.getItem('claimguard_chat_sessions');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setSessions(parsed);
+      } catch (e) {
+        console.error("Failed to parse chat sessions", e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sessions.length > 0) {
+      localStorage.setItem('claimguard_chat_sessions', JSON.stringify(sessions));
+    } else {
+      localStorage.removeItem('claimguard_chat_sessions');
+    }
+  }, [sessions]);
 
   useEffect(() => {
     if (activeSessionId) {
@@ -158,10 +176,18 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
           updatedAt: new Date(s.updated_at).getTime(),
           filterTag: s.filter_tag,
           attachedFileName: s.attached_file_name,
-          isBookmarked: s.isBookmarked,
         }));
         
-        setSessions(mappedSessions.sort((a, b) => b.updatedAt - a.updatedAt));
+        setSessions(prev => {
+          // Merge logic: prefer backend but keep local-only sessions if any
+          const combined = [...mappedSessions];
+          prev.forEach(p => {
+            if (!combined.some(c => c.id === p.id)) {
+              combined.push(p);
+            }
+          });
+          return combined.sort((a, b) => b.updatedAt - a.updatedAt);
+        });
       }
     } catch (err) {
       console.error("Failed to fetch sessions from backend", err);
@@ -201,26 +227,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
 
   const toggleBookmark = () => {
     if (!activeSessionId) return;
-    setSessions(prev => {
-      const updated = prev.map(s => s.id === activeSessionId ? { ...s, isBookmarked: !s.isBookmarked } : s);
-      const sessionToSync = updated.find(s => s.id === activeSessionId);
-      const headers = getAuthHeaders();
-      if (headers.Authorization && sessionToSync) {
-        fetch('/api/user/chats', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...headers },
-          body: JSON.stringify({
-            session_id: sessionToSync.id.length > 20 ? undefined : sessionToSync.id,
-            title: sessionToSync.title,
-            messages: sessionToSync.messages,
-            filter_tag: sessionToSync.filterTag,
-            attached_file_name: sessionToSync.attachedFileName,
-            isBookmarked: sessionToSync.isBookmarked,
-          })
-        });
-      }
-      return updated;
-    });
+    setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, isBookmarked: !s.isBookmarked } : s));
   };
 
   const exportChat = () => {
@@ -360,7 +367,6 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                 messages: sessionToSync.messages,
                 filter_tag: sessionToSync.filterTag,
                 attached_file_name: sessionToSync.attachedFileName,
-                isBookmarked: sessionToSync.isBookmarked,
               })
             }).then(r => r.json()).then(data => {
               if (data.success && data.id && data.id !== currentId) {
