@@ -78,7 +78,7 @@ async def chat_with_gemini(
     prompt_parts = []
 
     if context:
-        prompt_parts.append(f"## EDI File Context\n```\n{context[:3000]}\n```\n")
+        prompt_parts.append(f"## EDI File Context\n```\n{context[:8000]}\n```\n")
 
     if history:
         prompt_parts.append("## Conversation History")

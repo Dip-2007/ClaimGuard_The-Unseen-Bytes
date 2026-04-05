@@ -60,10 +60,11 @@ def apply_fix(
     if not target_error:
         return raw_content, f"Error ID '{error_id}' not found in validation results"
 
-    if not target_error.fixable and not fix_value:
+    if not target_error.fixable and fix_value is None:
         return raw_content, f"Error '{error_id}' is not auto-fixable and no manual fix value was provided"
 
-    use_value = fix_value if fix_value else target_error.fix_value
+    # If the user explicitly passed a fix_value (even empty string), use it.
+    use_value = fix_value if fix_value is not None else target_error.fix_value
 
     # Use line number for precise targeting when available
     fix_line = target_error.line_number
@@ -87,11 +88,14 @@ def apply_fix(
             match_by_id = (fix_line <= 0 and seg_id == target_error.segment_id)
 
             if match_by_line or match_by_id:
-                if fix_elem_idx < len(parts):
-                    parts[fix_elem_idx] = use_value
-                    fixed = True
-                    corrected_segments.append(elem_sep.join(parts))
-                    continue
+                # Pad the segment up to the fix index if elements are missing
+                if fix_elem_idx >= len(parts):
+                    parts.extend([""] * (fix_elem_idx - len(parts) + 1))
+                
+                parts[fix_elem_idx] = use_value
+                fixed = True
+                corrected_segments.append(elem_sep.join(parts))
+                continue
 
         corrected_segments.append(raw_seg)
 

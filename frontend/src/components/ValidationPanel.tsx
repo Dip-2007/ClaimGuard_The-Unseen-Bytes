@@ -110,26 +110,42 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
     return formatEdi(baseContent).split('\n');
   }, [initialRawContent, rawContent]);
 
+  // Build a unique key per error instance to avoid AI response collisions
+  const errKey = (err: ValidationError) => `${err.error_id}__L${err.line_number}__E${err.element_index}`;
+
   const handleManualFixClick = async (err: ValidationError) => {
-    setManualFixId(err.error_id);
+    const key = errKey(err);
+    setManualFixId(key);
     setManualFixValue('');
-    if (!aiExplanations[err.error_id]) {
-      setLoadingAi((prev) => ({ ...prev, [err.error_id]: true }));
+    if (!aiExplanations[key]) {
+      setLoadingAi((prev) => ({ ...prev, [key]: true }));
       try {
+        // Extract the actual erroneous line from the raw content for precise AI context
+        const ediLines = formatEdi(rawContent).split('\n');
+        const errLineContent = err.line_number > 0 && err.line_number <= ediLines.length
+          ? ediLines[err.line_number - 1]
+          : '(line not found)';
+        // Also grab surrounding lines for context
+        const surroundStart = Math.max(0, err.line_number - 4);
+        const surroundEnd = Math.min(ediLines.length, err.line_number + 3);
+        const surroundingLines = ediLines.slice(surroundStart, surroundEnd)
+          .map((l, i) => `Line ${surroundStart + i + 1}${surroundStart + i + 1 === err.line_number ? ' >>> ' : ':    '}${l}`)
+          .join('\n');
+
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message: `You are an expert X12 EDI validator. An error occurred at Segment: ${err.segment_id}, Element Index: ${err.element_index}, on Line Number: ${err.line_number}. Error ID: ${err.error_id}, Message: ${err.message}, Suggestion: ${err.suggestion}. Locate exactly line ${err.line_number} in the provided EDI context to analyze the error. Explain briefly in 1-2 short sentences how to fix it based on the exact context. Then, on a new line starting exactly with 'RECOMMENDED_VALUE:', provide exactly the literal string value they should inject. Then, on a new line starting exactly with 'CONFIDENCE:', provide a percentage (e.g., 99%) of how sure you are about this recommendation.`,
+            message: `You are an expert X12 EDI 5010 validator. A validation error was found:\n\n- Error ID: ${err.error_id}\n- Segment: ${err.segment_id}\n- Element Index: ${err.element_index}\n- Line Number: ${err.line_number}\n- Severity: ${err.severity}\n- Message: ${err.message}\n- Suggestion: ${err.suggestion || 'None'}\n\nThe erroneous line is:\n\`${errLineContent}\`\n\nSurrounding context:\n\`\`\`\n${surroundingLines}\n\`\`\`\n\nBased on HIPAA 5010 rules, explain in 1-2 short sentences exactly what is wrong and what value element ${err.element_index} should contain. Then on a NEW LINE write exactly:\nRECOMMENDED_VALUE: <the exact literal value to inject>\nCONFIDENCE: <percentage>`,
             context: rawContent
           }),
         });
         const data = await res.json();
-        setAiExplanations((prev) => ({ ...prev, [err.error_id]: data.reply }));
+        setAiExplanations((prev) => ({ ...prev, [key]: data.reply }));
       } catch {
-        setAiExplanations((prev) => ({ ...prev, [err.error_id]: 'AI explanation currently unavailable.' }));
+        setAiExplanations((prev) => ({ ...prev, [key]: 'AI explanation currently unavailable.' }));
       } finally {
-        setLoadingAi((prev) => ({ ...prev, [err.error_id]: false }));
+        setLoadingAi((prev) => ({ ...prev, [key]: false }));
       }
     }
   };
@@ -221,11 +237,9 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
 
                     const hasFullLineError = errs.some(e => e.severity === 'error' && e.element_index <= 0);
                     const hasFullLineWarn = errs.some(e => e.severity === 'warning' && e.element_index <= 0);
-                    
-                    const isFullLineModified = (hasFullLineError || hasFullLineWarn) && (line !== origLine);
 
-                    const lineBgClass = isFullLineModified ? "bg-green-500/10" : hasFullLineError ? "bg-red-500/10" : hasFullLineWarn ? "bg-amber-500/10" : "bg-transparent";
-                    const borderColor = isFullLineModified ? "border-green-500/40" : hasFullLineError ? "border-red-500/40" : hasFullLineWarn ? "border-amber-500/40" : "border-transparent";
+                    const lineBgClass = hasFullLineError ? "bg-red-500/10" : hasFullLineWarn ? "bg-amber-500/10" : "bg-transparent";
+                    const borderColor = hasFullLineError ? "border-red-500/40" : hasFullLineWarn ? "border-amber-500/40" : "border-transparent";
 
                     if (line === '') {
                       return <div key={i} className={`border-l-2 ${borderColor} ${lineBgClass} pl-[14px] pr-4 text-transparent whitespace-pre flex w-max min-w-full`} style={{ fontFamily: '"JetBrains Mono", "Fira Code", monospace', fontSize: '14px', height: '24px', lineHeight: '24px', letterSpacing: '0px' }}> </div>;
@@ -236,15 +250,15 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
                     return (
                       <div key={i} className={`border-l-2 ${borderColor} ${lineBgClass} pl-[14px] pr-4 text-transparent whitespace-pre flex w-max min-w-full`} style={{ fontFamily: '"JetBrains Mono", "Fira Code", monospace', fontSize: '14px', height: '24px', lineHeight: '24px', letterSpacing: '0px' }}>
                         {parts.map((part, pIdx) => {
-                          const isErr = errs.some(e => e.severity === 'error' && e.element_index === pIdx);
-                          const isWarn = errs.some(e => e.severity === 'warning' && e.element_index === pIdx);
+                          const isErr = errs.some(e => e.severity === 'error' && (e.element_index === pIdx || (pIdx === 0 && e.element_index <= 0)));
+                          const isWarn = errs.some(e => e.severity === 'warning' && (e.element_index === pIdx || (pIdx === 0 && e.element_index <= 0)));
                           
                           const origPart = origParts[pIdx];
                           const isModified = origPart !== undefined && part !== origPart;
                           
-                          const partBg = isModified ? "bg-green-500/40 rounded-sm shadow-[0_0_8px_rgba(34,197,94,0.4)]" :
-                                         isErr ? "bg-red-500/40 rounded-sm shadow-[0_0_8px_rgba(239,68,68,0.4)]" : 
-                                         isWarn ? "bg-amber-500/40 rounded-sm shadow-[0_0_8px_rgba(245,158,11,0.4)]" : "bg-transparent";
+                          const partBg = isErr ? "bg-red-500/40 rounded-sm shadow-[0_0_8px_rgba(239,68,68,0.4)]" : 
+                                         isWarn ? "bg-amber-500/40 rounded-sm shadow-[0_0_8px_rgba(245,158,11,0.4)]" :
+                                         isModified ? "bg-green-500/40 rounded-sm shadow-[0_0_8px_rgba(34,197,94,0.4)]" : "bg-transparent";
 
                           return (
                             <span key={pIdx}><span className={partBg}>{part}</span>{pIdx < parts.length - 1 ? <span className="bg-transparent">{elemSep}</span> : null}</span>
@@ -263,6 +277,110 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
                   spellCheck={false}
                   wrap="off"
                 />
+
+                {/* ━━━ HOVER LAYER FOR TOOLTIPS (Z-20) ━━━ */}
+                <div className="absolute inset-0 pt-4 pointer-events-none whitespace-pre pb-12 z-20" style={{ fontFamily: '"JetBrains Mono", "Fira Code", monospace', fontSize: '14px', lineHeight: '24px', letterSpacing: '0px' }}>
+                  {(() => {
+                    const lines = editableRawContent.split('\n');
+                    const lineOffsets = lines.reduce((acc, _, idx) => {
+                      if (idx === 0) acc.push(0);
+                      else acc.push(acc[idx - 1] + lines[idx - 1].length + 1);
+                      return acc;
+                    }, [] as number[]);
+
+                    return lines.map((line, i) => {
+                      const lineNum = i + 1;
+                      const errs = errorsByLine[lineNum] || [];
+                      const elemSep = editableRawContent.length > 3 ? editableRawContent[3] : '*';
+                      
+                      if (line === '') {
+                        return <div key={`hover-${i}`} className="border-l-2 border-transparent pl-[14px] pr-4 flex w-max min-w-full text-transparent" style={{ height: '24px' }}> </div>;
+                      }
+
+                      let charOffsetInLine = 0;
+                      const parts = line.split(elemSep);
+                      const lineOffset = lineOffsets[i];
+                      
+                      const origLine = originalLines[i] || '';
+                      const origParts = origLine.split(elemSep);
+
+                      return (
+                        <div key={`hover-${i}`} className="border-l-2 border-transparent pl-[14px] pr-4 flex w-max min-w-full text-transparent" style={{ height: '24px' }}>
+                          {parts.map((part, pIdx) => {
+                            const matchedErrs = errs.filter(e => (e.severity === 'error' || e.severity === 'warning') && (e.element_index === pIdx || (pIdx === 0 && e.element_index <= 0)));
+                            const origPart = origParts[pIdx];
+                            const isModified = origPart !== undefined && part !== origPart;
+
+                            const partStart = lineOffset + charOffsetInLine;
+                            charOffsetInLine += part.length + 1; // +1 for elemSep
+
+                            if (matchedErrs.length > 0 || isModified) {
+                              return (
+                                <span 
+                                  key={pIdx} 
+                                  className="relative group pointer-events-auto cursor-text"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    const ta = e.currentTarget.closest('.relative.min-w-max')?.querySelector('textarea');
+                                    if (ta) {
+                                      ta.focus();
+                                      ta.setSelectionRange(partStart, partStart + part.length);
+                                    }
+                                  }}
+                                >
+                                  {part}
+                                  {/* TOOLTIP */}
+                                  <div className="absolute top-full left-0 mt-1 w-max max-w-[320px] p-3 rounded-lg shadow-2xl bg-slate-900 border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-[100] pointer-events-none invisible group-hover:visible flex flex-col gap-1.5" style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', letterSpacing: 'normal', lineHeight: 'normal' }}>
+                                    {isModified && (
+                                      <div className={`${matchedErrs.length > 0 ? 'mb-3' : ''} p-2 bg-green-500/10 border border-green-500/20 rounded`}>
+                                        <div className="flex items-center gap-1.5 mb-1.5">
+                                          <span className="text-[10px] uppercase font-bold text-green-400 bg-green-500/20 px-1.5 py-[2px] rounded border border-green-500/30">Current Edits</span>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-[10px] font-semibold text-slate-500 uppercase mt-0.5 w-[32px]">From:</span>
+                                            <span className="font-mono text-[12px] text-red-400/80 bg-red-400/10 px-1 rounded line-through decoration-red-500/50 break-all">{origPart === '' ? '(empty)' : origPart}</span>
+                                          </div>
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-[10px] font-semibold text-slate-500 uppercase mt-0.5 w-[32px]">To:</span>
+                                            <span className="font-mono text-[12px] text-green-300 bg-green-400/10 px-1 rounded break-all">{part === '' ? '(empty)' : part}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {matchedErrs.length > 0 && (
+                                      <div className="flex flex-col gap-3">
+                                        {matchedErrs.map((err, errIdx) => (
+                                          <div key={`err-${errIdx}`}>
+                                            <div className="flex items-center gap-2 mb-1.5">
+                                              <span className={`px-2 py-[2px] rounded uppercase text-[10px] font-bold ${err.severity === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+                                                {err.severity}
+                                              </span>
+                                              <span className="text-slate-300 text-[11px] font-semibold">{err.error_id} • {err.segment_id}{err.element_index > 0 ? String(err.element_index).padStart(2, '0') : ''}</span>
+                                            </div>
+                                            <p className="text-[13px] text-slate-100 whitespace-normal leading-relaxed">{err.message}</p>
+                                            {err.suggestion && <p className="text-[12px] text-slate-400 whitespace-normal mt-1"><strong className="text-slate-300 font-semibold">Suggestion:</strong> {err.suggestion}</p>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {pIdx < parts.length - 1 ? <span className="pointer-events-none">{elemSep}</span> : null}
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <span key={pIdx} className="pointer-events-none">
+                                {part}{pIdx < parts.length - 1 ? elemSep : null}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
 
               </div>
             </div>
@@ -368,12 +486,12 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
                       Apply fix
                     </button>
                   ) : err.element_index > 0 && err.severity !== 'info' ? (
-                    manualFixId === err.error_id ? (
+                    manualFixId === errKey(err) ? (
                       <div className="flex flex-col gap-2 mt-2 bg-slate-800 p-3 rounded border border-slate-700 animate-fade-in shadow-xl relative z-10 w-72">
                         <label className="text-xs font-medium text-slate-300">Enter correct value for {err.segment_id}{String(err.element_index).padStart(2, '0')}</label>
                         
                         <div className="bg-slate-900/50 rounded p-2 text-xs text-indigo-200 border border-indigo-900/50 leading-relaxed">
-                          {loadingAi[err.error_id] ? (
+                          {loadingAi[errKey(err)] ? (
                             <span className="flex items-center gap-2">
                               <svg className="animate-spin h-3 w-3 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -383,7 +501,7 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
                             </span>
                           ) : (
                             (() => {
-                              const aiText = aiExplanations[err.error_id] || '';
+                              const aiText = aiExplanations[errKey(err)] || '';
                               
                               let aiExplanation = aiText;
                               let aiRecommendation = null;
