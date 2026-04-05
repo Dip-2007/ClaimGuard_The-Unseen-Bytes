@@ -5,7 +5,7 @@ Authentication utilities — password hashing, JWT creation/verification, depend
 import os
 import jwt
 from datetime import datetime, timedelta, timezone
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
@@ -15,17 +15,24 @@ JWT_SECRET = os.getenv("JWT_SECRET", "claimguard-default-secret-change-me")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 72  # 3 days
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer(auto_error=False)
 
 
 # ── Password ───────────────────────────────────────────────────────────
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    # Truncate to 72 bytes to avoid bcrypt error
+    pw_bytes = password.encode('utf-8')[:72]
+    return bcrypt.hashpw(pw_bytes, bcrypt.gensalt()).decode('utf-8')
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        pw_bytes = plain.encode('utf-8')[:72]
+        # Some generated hashes from passlib might have a slightly different prefix,
+        # but checkpw handles standard bcrypt hashes fine.
+        return bcrypt.checkpw(pw_bytes, hashed.encode('utf-8'))
+    except Exception:
+        return False
 
 
 # ── JWT ────────────────────────────────────────────────────────────────
