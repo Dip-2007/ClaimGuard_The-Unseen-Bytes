@@ -626,11 +626,39 @@ async def get_history(current_user: dict = Depends(get_current_user)):
             timestamp=doc.get("created_at", ""),
             metadata={
                 k: v for k, v in doc.items()
-                if k not in ("_id", "user_id", "type", "title", "description", "created_at")
+                if k not in ("_id", "user_id", "type", "title", "description", "created_at", "raw_content")
             },
         ))
 
     return HistoryResponse(activities=activities, total=len(activities))
+
+@app.put("/api/save-progress/{activity_id}")
+async def save_progress(activity_id: str, body: dict, current_user: dict = Depends(get_current_user)):
+    """Save corrected EDI content back to the cloud after fixing."""
+    if not current_user:
+        raise HTTPException(401, "Not authenticated")
+
+    db = get_db()
+    from bson.objectid import ObjectId
+    try:
+        result = await db.activities.update_one(
+            {"_id": ObjectId(activity_id), "user_id": current_user["sub"]},
+            {"$set": {
+                "raw_content": body.get("raw_content", ""),
+                "error_count": body.get("error_count", 0),
+                "warning_count": body.get("warning_count", 0),
+                "description": body.get("description", ""),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if result.matched_count == 0:
+            raise HTTPException(404, "Activity not found")
+        return {"success": True, "message": "Progress saved to cloud"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, f"Save error: {str(e)}")
+
 
 @app.get("/api/download-activity/{activity_id}")
 async def download_activity(activity_id: str, current_user: dict = Depends(get_current_user)):
@@ -674,6 +702,7 @@ async def get_user_chats(current_user: dict = Depends(get_current_user)):
             "messages": doc.get("messages", []),
             "filter_tag": doc.get("filter_tag", "All"),
             "attached_file_name": doc.get("attached_file_name"),
+            "isBookmarked": doc.get("is_bookmarked", False),
             "created_at": doc.get("created_at", ""),
             "updated_at": doc.get("updated_at", ""),
         })
@@ -699,6 +728,7 @@ async def save_user_chat(
         "messages": body.get("messages", []),
         "filter_tag": body.get("filter_tag", "All"),
         "attached_file_name": body.get("attached_file_name"),
+        "is_bookmarked": body.get("isBookmarked", False),
         "updated_at": now,
     }
 

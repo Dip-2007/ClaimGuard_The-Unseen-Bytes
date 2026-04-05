@@ -89,6 +89,7 @@ export default function App() {
   const [parseData, setParseData] = useState<ParseData | null>(null);
   const [rawContent, setRawContent] = useState('');
   const [initialRawContent, setInitialRawContent] = useState('');
+  const [activeActivityId, setActiveActivityId] = useState<string | null>(null);
   const [remittance, setRemittance] = useState<any>(null);
   const [enrollment, setEnrollment] = useState<any>(null);
 
@@ -238,6 +239,19 @@ export default function App() {
               : prev
           );
 
+          // Auto-sync corrected content to MongoDB cloud
+          if (activeActivityId) {
+            fetch(`/api/save-progress/${activeActivityId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+              body: JSON.stringify({
+                raw_content: data.corrected_content,
+                error_count: data.validation_result?.error_count || 0,
+                warning_count: data.validation_result?.warning_count || 0,
+                description: `File: ${parseData?.parse_result?.file_name || 'file.edi'} — ${data.validation_result?.error_count || 0} errors, ${data.validation_result?.warning_count || 0} warnings`,
+              }),
+            }).catch(err => console.error('Cloud sync error:', err));
+          }
         }
       } catch (err) {
         console.error('Fix error:', err);
@@ -272,11 +286,24 @@ export default function App() {
             : prev
         );
 
+          // Auto-sync corrected content to MongoDB cloud
+          if (activeActivityId) {
+            fetch(`/api/save-progress/${activeActivityId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+              body: JSON.stringify({
+                raw_content: data.corrected_content,
+                error_count: data.validation_result?.error_count || 0,
+                warning_count: data.validation_result?.warning_count || 0,
+                description: `File: ${parseData?.parse_result?.file_name || 'file.edi'} — ${data.validation_result?.error_count || 0} errors, ${data.validation_result?.warning_count || 0} warnings`,
+              }),
+            }).catch(err => console.error('Cloud sync error:', err));
+          }
       }
     } catch (err) {
       console.error('Fix all error:', err);
     }
-  }, [rawContent]);
+  }, [rawContent, activeActivityId, getAuthHeaders, parseData]);
 
   const handleRawEdit = useCallback(async (newRawContent: string) => {
     if (!newRawContent) return;
@@ -452,19 +479,16 @@ export default function App() {
                 <HistoryDashboard
                   getAuthHeaders={getAuthHeaders}
                   isGuest={isGuest}
-                  onContinueFixing={async (metadata) => {
+                  onContinueFixing={async (activityId, metadata) => {
                     let fileText = '';
-                    if (metadata?.raw_content) {
-                      fileText = metadata.raw_content;
-                    } else if (metadata?.cloudinary_url) {
-                      try {
-                        const fileRes = await fetch(`/api/fetch-cloudinary?url=${encodeURIComponent(metadata.cloudinary_url)}`, {
-                          headers: getAuthHeaders()
-                        });
-                        if (fileRes.ok) fileText = await fileRes.text();
-                      } catch (err) {
-                        console.error('Failed to load file from Cloudinary:', err);
-                      }
+                    // Always fetch from cloud via authenticated endpoint
+                    try {
+                      const fileRes = await fetch(`/api/download-activity/${activityId}`, {
+                        headers: getAuthHeaders()
+                      });
+                      if (fileRes.ok) fileText = await fileRes.text();
+                    } catch (err) {
+                      console.error('Failed to load file from cloud:', err);
                     }
 
                     if (fileText) {
@@ -483,6 +507,7 @@ export default function App() {
                         const data = await parseRes.json();
 
                         if (data.success) {
+                          setActiveActivityId(activityId);
                           setRawContent(data.parse_result.raw_content);
                           setInitialRawContent(data.parse_result.raw_content);
                           await handleFileProcessed(data);
@@ -496,22 +521,19 @@ export default function App() {
                         setLoading(false);
                       }
                     } else {
-                      alert('The file content is no longer available in history. Please upload a new file.');
+                      alert('The file content is no longer available in cloud. Please upload a new file.');
                     }
                   }}
-                  onViewResult={async (metadata) => {
+                  onViewResult={async (activityId, metadata) => {
                     let fileText = '';
-                    if (metadata?.raw_content) {
-                      fileText = metadata.raw_content;
-                    } else if (metadata?.cloudinary_url) {
-                      try {
-                        const fileRes = await fetch(`/api/fetch-cloudinary?url=${encodeURIComponent(metadata.cloudinary_url)}`, {
-                          headers: getAuthHeaders()
-                        });
-                        if (fileRes.ok) fileText = await fileRes.text();
-                      } catch (err) {
-                        console.error('Failed to load file from Cloudinary:', err);
-                      }
+                    // Always fetch from cloud via authenticated endpoint
+                    try {
+                      const fileRes = await fetch(`/api/download-activity/${activityId}`, {
+                        headers: getAuthHeaders()
+                      });
+                      if (fileRes.ok) fileText = await fileRes.text();
+                    } catch (err) {
+                      console.error('Failed to load file from cloud:', err);
                     }
 
                     if (fileText) {
@@ -529,6 +551,7 @@ export default function App() {
                         const data = await parseRes.json();
 
                         if (data.success) {
+                          setActiveActivityId(activityId);
                           setRawContent(data.parse_result.raw_content);
                           setInitialRawContent(data.parse_result.raw_content);
                           await handleFileProcessed(data);
@@ -542,7 +565,7 @@ export default function App() {
                         setLoading(false);
                       }
                     } else {
-                      alert('The file content is no longer available in history. Please upload a new file.');
+                      alert('The file content is no longer available in cloud. Please upload a new file.');
                     }
                   }}
                 />
