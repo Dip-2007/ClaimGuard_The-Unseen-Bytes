@@ -36,18 +36,18 @@ const renderMessageContent = (content: string) => {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ children }) => <h1 className="text-xl font-bold text-white mt-4 mb-2 border-b border-slate-700 pb-2">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-lg font-bold text-white mt-4 mb-2">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-base font-semibold text-slate-200 mt-3 mb-1.5">{children}</h3>,
-          h4: ({ children }) => <h4 className="text-sm font-semibold text-slate-300 mt-2 mb-1">{children}</h4>,
-          p: ({ children }) => <p className="mb-3 leading-[1.8] text-slate-300">{children}</p>,
-          strong: ({ children }) => <strong className="text-white font-semibold">{children}</strong>,
-          em: ({ children }) => <em className="text-slate-400 italic">{children}</em>,
-          ul: ({ children }) => <ul className="list-disc ml-5 mb-3 space-y-1 text-slate-300">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal ml-5 mb-3 space-y-1 text-slate-300">{children}</ol>,
+          h1: ({ children }) => <h1 className="text-xl font-bold text-[var(--text)] mt-4 mb-2 border-b border-slate-700 pb-2">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-lg font-bold text-[var(--text)] mt-4 mb-2">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-base font-semibold text-[var(--text)] mt-3 mb-1.5">{children}</h3>,
+          h4: ({ children }) => <h4 className="text-sm font-semibold text-[var(--muted)] mt-2 mb-1">{children}</h4>,
+          p: ({ children }) => <p className="mb-3 leading-[1.8] text-[var(--text)]">{children}</p>,
+          strong: ({ children }) => <strong className="text-[var(--text)] font-semibold">{children}</strong>,
+          em: ({ children }) => <em className="text-[var(--muted)] italic">{children}</em>,
+          ul: ({ children }) => <ul className="list-disc ml-5 mb-3 space-y-1 text-[var(--text)]">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal ml-5 mb-3 space-y-1 text-[var(--text)]">{children}</ol>,
           li: ({ children }) => <li className="leading-[1.7]">{children}</li>,
           blockquote: ({ children }) => (
-            <blockquote className="border-l-3 border-slate-500 pl-4 my-3 text-slate-400 italic bg-slate-800/30 py-2 rounded-r-lg">
+            <blockquote className="border-l-3 border-[var(--muted)] pl-4 my-3 text-[var(--muted)] italic bg-slate-800/30 py-2 rounded-r-lg">
               {children}
             </blockquote>
           ),
@@ -57,16 +57,16 @@ const renderMessageContent = (content: string) => {
               <table className="w-full text-sm">{children}</table>
             </div>
           ),
-          thead: ({ children }) => <thead className="bg-slate-800 text-slate-300 font-semibold">{children}</thead>,
+          thead: ({ children }) => <thead className="bg-[#1e293b]/50 text-[var(--text)] font-semibold">{children}</thead>,
           tbody: ({ children }) => <tbody className="divide-y divide-slate-700/50">{children}</tbody>,
-          tr: ({ children }) => <tr className="hover:bg-slate-800/40 transition">{children}</tr>,
-          th: ({ children }) => <th className="px-4 py-2.5 text-left text-xs uppercase tracking-wider text-slate-400">{children}</th>,
-          td: ({ children }) => <td className="px-4 py-2.5 text-slate-300">{children}</td>,
+          tr: ({ children }) => <tr className="hover:bg-slate-800/20 transition">{children}</tr>,
+          th: ({ children }) => <th className="px-4 py-2.5 text-left text-xs uppercase tracking-wider text-[var(--muted)]">{children}</th>,
+          td: ({ children }) => <td className="px-4 py-2.5 text-[var(--text)]">{children}</td>,
           hr: () => <hr className="border-slate-700 my-4" />,
           code: ({ className, children }) => {
             const isInline = !className;
             if (isInline) {
-              return <code className="bg-slate-800 text-slate-200 px-1.5 py-0.5 rounded text-[13px] font-mono border border-slate-700">{children}</code>;
+              return <code className="bg-[#1e293b]/20 text-[var(--text)] px-1.5 py-0.5 rounded text-[13px] font-mono border border-slate-700/30">{children}</code>;
             }
             const codeText = String(children).replace(/\n$/, '');
             return (
@@ -543,7 +543,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
         {/* Top header with active functional buttons */}
         <div className="h-16 flex items-center px-10 z-10 w-full pt-6 justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={onBack} className="text-slate-400 hover:text-white transition flex items-center gap-2 text-[14px] font-medium tracking-wide">
+            <button onClick={onBack} className="text-[var(--muted)] hover:text-[var(--text)] transition flex items-center gap-2 text-[14px] font-medium tracking-wide">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
               Workspace
             </button>
@@ -554,12 +554,12 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
           </div>
           
           {/* Functional Top Right Buttons */}
-          <div className="flex items-center gap-5 text-slate-400">
+          <div className="flex items-center gap-5 text-[var(--muted)]">
             {effectiveContext && (
                <button 
                  onClick={() => setIsViewingContext(true)}
                  title="View Context File"
-                 className="flex items-center gap-2 hover:text-white transition focus:outline-none bg-[#22c55e]/10 text-[#4ade80] px-3 py-1.5 rounded-[10px] text-xs font-semibold"
+                 className="flex items-center gap-2 hover:text-[var(--text)] transition focus:outline-none bg-[#22c55e]/10 text-[#4ade80] px-3 py-1.5 rounded-[10px] text-xs font-semibold"
                >
                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                  View Context
@@ -570,14 +570,14 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                 <button 
                   onClick={toggleBookmark}
                   title={activeSession?.isBookmarked ? "Remove Bookmark" : "Bookmark Chat"}
-                  className={`transition focus:outline-none ${activeSession?.isBookmarked ? 'text-[#4ade80]' : 'hover:text-white'}`}
+                  className={`transition focus:outline-none ${activeSession?.isBookmarked ? 'text-[#4ade80]' : 'hover:text-[var(--text)]'}`}
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill={activeSession?.isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                 </button>
                 <button 
                   onClick={exportChat}
                   title="Export Chat as JSON"
-                  className="hover:text-white transition focus:outline-none"
+                  className="hover:text-[var(--text)] transition focus:outline-none"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
                 </button>
@@ -668,9 +668,9 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                   <div className="flex items-center gap-4 mb-2">
                     {msg.role === 'user' ? (
                       <>
-                        <span className="font-semibold text-white text-[15px]">You</span>
-                        <div className="w-8 h-8 rounded-full bg-[#2a2a2a] flex items-center justify-center border border-[#333]">
-                          <svg className="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <span className={`font-semibold ${isLight ? 'text-[#1a1a2e]' : 'text-white'} text-[15px]`}>You</span>
+                        <div className={`w-8 h-8 rounded-full ${isLight ? 'bg-[#f3f2ef] border-[#e0dfdc]' : 'bg-[#2a2a2a] border-[#333]'} flex items-center justify-center border`}>
+                          <svg className={`w-4 h-4 ${isLight ? 'text-[#666]' : 'text-slate-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         </div>
                       </>
                     ) : (
@@ -683,7 +683,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                     )}
                   </div>
                   
-                  <div className={`max-w-[85%] text-[15px] ${msg.role === 'user' ? 'pr-12 text-white text-right' : 'pl-12 text-slate-300 font-normal'} tracking-[0.015em] leading-[1.75]`}>
+                  <div className={`max-w-[85%] text-[15px] ${msg.role === 'user' ? `pr-12 ${isLight ? 'text-[#1a1a2e]' : 'text-white'} text-right` : `pl-12 ${isLight ? 'text-[#333]' : 'text-slate-300'} font-normal`} tracking-[0.015em] leading-[1.75]`}>
                     {renderMessageContent(msg.content)}
                   </div>
                 </div>
@@ -754,20 +754,20 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
         <div className={`fixed inset-0 z-[100] flex items-center justify-center ${isLight ? 'bg-white/60' : 'bg-black/60'} backdrop-blur-sm p-6`}>
           <div className={`${isLight ? 'bg-white border-[#e0dfdc]' : 'bg-[#121212] border-[#333]'} border rounded-[24px] w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden shadow-2xl relative animate-fade-in`}>
             <div className={`h-16 border-b ${isLight ? 'border-[#e0dfdc] bg-[#f3f2ef]' : 'border-[#333] bg-[#1a1a1a]'} flex items-center justify-between px-6`}>
-              <h3 className="text-white font-semibold flex items-center gap-2">
+              <h3 className={`${isLight ? 'text-[#1a1a2e]' : 'text-white'} font-semibold flex items-center gap-2`}>
                 <svg className="w-5 h-5 text-[#4ade80]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                 {localAttachment ? localAttachment.name : "Workspace EDI Context"}
               </h3>
               
               <div className="flex gap-4 items-center">
                 {(localAttachment ? localParsedContext : parsedContext) && (
-                  <div className="flex bg-[#222] p-1 rounded-lg border border-[#333]">
-                    <button onClick={() => setContextViewType('raw')} className={`px-4 py-1.5 text-xs rounded-md transition ${contextViewType === 'raw' ? 'bg-[#4ade80] text-black font-bold' : 'text-slate-400 hover:text-white'}`}>Raw EDI</button>
-                    <button onClick={() => setContextViewType('json')} className={`px-4 py-1.5 text-xs rounded-md transition ${contextViewType === 'json' ? 'bg-[#4ade80] text-black font-bold' : 'text-slate-400 hover:text-white'}`}>Parsed JSON</button>
+                  <div className={`flex ${isLight ? 'bg-white border-[#e0dfdc]' : 'bg-[#222] border-[#333]'} p-1 rounded-lg border`}>
+                    <button onClick={() => setContextViewType('raw')} className={`px-4 py-1.5 text-xs rounded-md transition ${contextViewType === 'raw' ? 'bg-[#4ade80] text-black font-bold' : `text-[var(--muted)] hover:text-[var(--text)]`}`}>Raw EDI</button>
+                    <button onClick={() => setContextViewType('json')} className={`px-4 py-1.5 text-xs rounded-md transition ${contextViewType === 'json' ? 'bg-[#4ade80] text-black font-bold' : `text-[var(--muted)] hover:text-[var(--text)]`}`}>Parsed JSON</button>
                   </div>
                 )}
                 
-                <button onClick={() => setIsViewingContext(false)} className="text-slate-400 hover:text-white p-2 ml-2" title="Close context viewer">
+                <button onClick={() => setIsViewingContext(false)} className="text-[var(--muted)] hover:text-[var(--text)] p-2 ml-2" title="Close context viewer">
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
@@ -780,7 +780,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
             <div className={`h-14 border-t ${isLight ? 'border-[#e0dfdc] bg-[#f3f2ef]' : 'border-[#333] bg-[#1a1a1a]'} flex items-center justify-end px-6`}>
                <button 
                   onClick={() => setIsViewingContext(false)} 
-                  className="bg-[#333] hover:bg-[#444] text-white px-5 py-2 rounded-xl text-sm font-medium transition"
+                  className={`${isLight ? 'bg-[#e0dfdc] hover:bg-[#d0cfcc] text-[#1a1a2e]' : 'bg-[#333] hover:bg-[#444] text-white'} px-5 py-2 rounded-xl text-sm font-medium transition`}
                >
                  Close
                </button>
