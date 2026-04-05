@@ -24,12 +24,24 @@ def apply_fix(
 
     Returns (corrected_content, message).
     """
+    import logging
+    logger = logging.getLogger("auto_fix")
+    
     elem_sep, sub_sep, seg_term = detect_delimiters(raw_content)
     raw_segments = split_segments(raw_content, seg_term)
+
+    logger.info(f"apply_fix: error_id={error_id}, fix_value='{fix_value}', "
+                f"target_line={target_line}, target_elem={target_elem}")
+    logger.info(f"Delimiters: elem='{elem_sep}', seg_term='{seg_term}', total_segments={len(raw_segments)}")
 
     # Parse to find the error
     parse_result = parse_edi(raw_content)
     validation = validate_edi(parse_result)
+
+    logger.info(f"Current validation has {len(validation.errors)} errors")
+    for i, e in enumerate(validation.errors):
+        logger.info(f"  err[{i}]: id={e.error_id}, seg={e.segment_id}, line={e.line_number}, "
+                     f"elem={e.element_index}, fixable={e.fixable}, severity={e.severity}")
 
     # --- Find the EXACT error instance the user clicked -----
     target_error = None
@@ -58,7 +70,11 @@ def apply_fix(
                 break
 
     if not target_error:
+        logger.warning(f"ERROR NOT FOUND: '{error_id}' not in validation results")
         return raw_content, f"Error ID '{error_id}' not found in validation results"
+
+    logger.info(f"MATCHED error: id={target_error.error_id}, seg={target_error.segment_id}, "
+                f"line={target_error.line_number}, elem={target_error.element_index}")
 
     if not target_error.fixable and fix_value is None:
         return raw_content, f"Error '{error_id}' is not auto-fixable and no manual fix value was provided"
@@ -71,6 +87,7 @@ def apply_fix(
     fix_elem_idx = target_error.element_index
 
     if fix_elem_idx <= 0:
+        logger.warning(f"CANNOT FIX: element_index={fix_elem_idx} <= 0, full-segment error")
         return raw_content, f"Error '{error_id}' targets the full segment (element_index={fix_elem_idx}), cannot auto-fix a specific element."
 
     corrected_segments = []
@@ -88,6 +105,9 @@ def apply_fix(
             match_by_id = (fix_line <= 0 and seg_id == target_error.segment_id)
 
             if match_by_line or match_by_id:
+                old_value = parts[fix_elem_idx] if fix_elem_idx < len(parts) else "(missing)"
+                logger.info(f"APPLYING FIX at seg_line={seg_line}: {seg_id}[{fix_elem_idx}] "
+                            f"'{old_value}' -> '{use_value}'")
                 # Pad the segment up to the fix index if elements are missing
                 if fix_elem_idx >= len(parts):
                     parts.extend([""] * (fix_elem_idx - len(parts) + 1))
@@ -100,9 +120,11 @@ def apply_fix(
         corrected_segments.append(raw_seg)
 
     if not fixed:
+        logger.warning(f"SEGMENT NOT FOUND for fix_line={fix_line}")
         return raw_content, f"Could not locate segment to fix for error '{error_id}'"
 
     corrected = seg_term.join(corrected_segments) + seg_term
+    logger.info(f"FIX APPLIED SUCCESSFULLY. Content changed: {corrected != raw_content}")
     return corrected, f"Applied fix for {error_id}: set {target_error.segment_id}{target_error.element_index:02d} to '{use_value}'"
 
 

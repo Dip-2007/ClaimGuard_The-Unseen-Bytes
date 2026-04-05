@@ -15,6 +15,15 @@ import HistoryDashboard from './components/HistoryDashboard';
 type TabId = 'upload' | 'results' | 'chat' | 'history';
 type SectionId = 'validation' | 'parsed' | 'summary';
 
+interface BatchFileEntry {
+  fileName: string;
+  parseData: ParseData;
+  rawContent: string;
+  initialRawContent: string;
+  remittance: any;
+  enrollment: any;
+}
+
 interface ParseData {
   parse_result: any;
   validation_result: any;
@@ -83,52 +92,115 @@ export default function App() {
   const [remittance, setRemittance] = useState<any>(null);
   const [enrollment, setEnrollment] = useState<any>(null);
 
-  const handleFileProcessed = useCallback(async (data: any) => {
-    setParseData(data);
-    setActiveTab('results');
+  // ── Batch (ZIP) state ──
+  const [batchFiles, setBatchFiles] = useState<BatchFileEntry[]>([]);
+  const [batchIndex, setBatchIndex] = useState(0);
+  const isBatchMode = batchFiles.length > 1;
 
+  // Fetch summaries for a single parse data result
+  const fetchSummaries = useCallback(async (data: any) => {
+    let rem = null;
+    let enr = null;
     if (data.transaction_type === '835' && data.parse_result?.raw_content) {
       try {
         const res = await fetch('/api/remittance-summary', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...getAuthHeaders()
-          },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({ raw_content: data.parse_result.raw_content }),
         });
-        const summary = await res.json();
-        setRemittance(summary);
-      } catch {
-        setRemittance(null);
-      }
-    } else {
-      setRemittance(null);
+        rem = await res.json();
+      } catch { /* ignore */ }
     }
-
     if (data.transaction_type === '834' && data.parse_result?.raw_content) {
       try {
         const res = await fetch('/api/enrollment-summary', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...getAuthHeaders()
-          },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({ raw_content: data.parse_result.raw_content }),
         });
-        const summary = await res.json();
-        setEnrollment(summary);
-      } catch {
-        setEnrollment(null);
-      }
-    } else {
-      setEnrollment(null);
+        enr = await res.json();
+      } catch { /* ignore */ }
     }
-  }, []);
+    return { rem, enr };
+  }, [getAuthHeaders]);
+
+  const handleFileProcessed = useCallback(async (data: any) => {
+    // ── BATCH ZIP MODE ──
+    if (data.results && Array.isArray(data.results)) {
+      const entries: BatchFileEntry[] = [];
+      for (const r of data.results) {
+        if (!r.upload_response?.success) continue;
+        const d = r.upload_response;
+        const rc = d.parse_result?.raw_content || '';
+        const { rem, enr } = await fetchSummaries(d);
+        entries.push({
+          fileName: r.file_name,
+          parseData: d,
+          rawContent: rc,
+          initialRawContent: rc,
+          remittance: rem,
+          enrollment: enr,
+        });
+      }
+      if (entries.length > 0) {
+        setBatchFiles(entries);
+        setBatchIndex(0);
+        // Load the first file
+        const first = entries[0];
+        setParseData(first.parseData);
+        setRawContent(first.rawContent);
+        setInitialRawContent(first.initialRawContent);
+        setRemittance(first.remittance);
+        setEnrollment(first.enrollment);
+        setActiveTab('results');
+      }
+      return;
+    }
+
+    // ── SINGLE FILE MODE ──
+    setBatchFiles([]);
+    setBatchIndex(0);
+    setParseData(data);
+    setActiveTab('results');
+
+    const { rem, enr } = await fetchSummaries(data);
+    setRemittance(rem);
+    setEnrollment(enr);
+  }, [fetchSummaries]);
+
+  // Save current file state back into the batch array before switching
+  const saveBatchState = useCallback(() => {
+    if (!isBatchMode) return;
+    setBatchFiles(prev => {
+      const copy = [...prev];
+      copy[batchIndex] = {
+        ...copy[batchIndex],
+        rawContent,
+        parseData: parseData!,
+        remittance,
+        enrollment,
+      };
+      return copy;
+    });
+  }, [isBatchMode, batchIndex, rawContent, parseData, remittance, enrollment]);
+
+  const handleBatchNav = useCallback((newIndex: number) => {
+    if (newIndex < 0 || newIndex >= batchFiles.length) return;
+    saveBatchState();
+    const entry = batchFiles[newIndex];
+    setBatchIndex(newIndex);
+    setParseData(entry.parseData);
+    setRawContent(entry.rawContent);
+    setInitialRawContent(entry.initialRawContent);
+    setRemittance(entry.remittance);
+    setEnrollment(entry.enrollment);
+    setActiveSection('validation');
+  }, [batchFiles, saveBatchState]);
 
   const handleFix = useCallback(
     async (errorId: string, fixValue: string, lineNumber: number = 0, elementIndex: number = -1) => {
       if (!rawContent) return;
+      console.log('[handleFix] Sending fix:', { errorId, fixValue, lineNumber, elementIndex, rawContentLength: rawContent.length });
       try {
         const res = await fetch('/api/fix', {
           method: 'POST',
@@ -145,6 +217,13 @@ export default function App() {
           }),
         });
         const data = await res.json();
+        console.log('[handleFix] Response:', { 
+          hasCorrection: !!data.corrected_content, 
+          contentChanged: data.corrected_content !== rawContent,
+          message: data.message,
+          newErrors: data.validation_result?.error_count,
+          newWarnings: data.validation_result?.warning_count,
+        });
         if (data.corrected_content) {
           setRawContent(data.corrected_content);
           setParseData((prev) =>
@@ -164,7 +243,7 @@ export default function App() {
         console.error('Fix error:', err);
       }
     },
-    [rawContent],
+    [rawContent, getAuthHeaders],
   );
 
   const handleFixAll = useCallback(async () => {
@@ -472,13 +551,82 @@ export default function App() {
 
             {activeTab === 'results' && parseData && (
               <section className="results-layout animate-fade-in">
+                {/* ── BATCH FILE NAVIGATOR ── */}
+                {isBatchMode && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: 12, padding: '12px 20px', marginBottom: 16,
+                    borderRadius: 16, border: '1px solid var(--border)',
+                    background: 'var(--bg-elevated)',
+                  }}>
+                    <button
+                      onClick={() => handleBatchNav(batchIndex - 1)}
+                      disabled={batchIndex <= 0}
+                      style={{
+                        background: batchIndex <= 0 ? 'transparent' : 'rgba(84,208,255,0.1)',
+                        border: '1px solid', borderColor: batchIndex <= 0 ? 'var(--border)' : 'rgba(84,208,255,0.3)',
+                        borderRadius: 10, padding: '8px 16px', cursor: batchIndex <= 0 ? 'not-allowed' : 'pointer',
+                        color: batchIndex <= 0 ? 'var(--muted)' : '#54d0ff',
+                        fontWeight: 700, fontSize: '0.8rem', fontFamily: 'inherit',
+                        opacity: batchIndex <= 0 ? 0.5 : 1, transition: 'all 0.2s',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                      Prev
+                    </button>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+                      {batchFiles.map((bf, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleBatchNav(idx)}
+                          style={{
+                            padding: '6px 14px', borderRadius: 10, cursor: 'pointer',
+                            fontSize: '0.75rem', fontWeight: idx === batchIndex ? 700 : 500,
+                            fontFamily: 'inherit', transition: 'all 0.2s',
+                            border: '1px solid',
+                            background: idx === batchIndex ? 'rgba(74,222,128,0.15)' : 'transparent',
+                            borderColor: idx === batchIndex ? 'rgba(74,222,128,0.4)' : 'var(--border)',
+                            color: idx === batchIndex ? '#4ade80' : 'var(--muted)',
+                          }}
+                        >
+                          {bf.fileName.length > 20 ? bf.fileName.slice(0, 18) + '…' : bf.fileName}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => handleBatchNav(batchIndex + 1)}
+                      disabled={batchIndex >= batchFiles.length - 1}
+                      style={{
+                        background: batchIndex >= batchFiles.length - 1 ? 'transparent' : 'rgba(84,208,255,0.1)',
+                        border: '1px solid', borderColor: batchIndex >= batchFiles.length - 1 ? 'var(--border)' : 'rgba(84,208,255,0.3)',
+                        borderRadius: 10, padding: '8px 16px', cursor: batchIndex >= batchFiles.length - 1 ? 'not-allowed' : 'pointer',
+                        color: batchIndex >= batchFiles.length - 1 ? 'var(--muted)' : '#54d0ff',
+                        fontWeight: 700, fontSize: '0.8rem', fontFamily: 'inherit',
+                        opacity: batchIndex >= batchFiles.length - 1 ? 0.5 : 1, transition: 'all 0.2s',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                      }}
+                    >
+                      Next
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                  </div>
+                )}
+
                 <div className="results-header">
                   <div>
-                    <div className="results-eyebrow">Current transaction</div>
+                    <div className="results-eyebrow">{isBatchMode ? `File ${batchIndex + 1} of ${batchFiles.length}` : 'Current transaction'}</div>
                     <div className="results-title-row">
                       <span className="transaction-pill">{parseData.transaction_type}</span>
                       <h2>{parseData.transaction_type_label}</h2>
                     </div>
+                    {isBatchMode && (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: 4, fontFamily: 'var(--font-mono, monospace)' }}>
+                        {batchFiles[batchIndex]?.fileName}
+                      </div>
+                    )}
                   </div>
 
                   <div className="results-meta">

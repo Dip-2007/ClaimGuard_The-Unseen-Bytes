@@ -32,7 +32,7 @@ export default function RemittanceSummary({ summary }: RemittanceSummaryProps) {
             <span className="badge badge-success">{paidPercent}% paid</span>
             <button
               onClick={() => setIsMaximized(!isMaximized)}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+              className="p-1.5 text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg-elevated)] rounded-md transition-colors"
               title={isMaximized ? "Restore view" : "Maximize view"}
             >
               {isMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -79,19 +79,19 @@ export default function RemittanceSummary({ summary }: RemittanceSummaryProps) {
                     {claim.status_label}
                   </span>
                 </td>
-                <td className="text-right font-mono text-slate-200">{formatCurrency(claim.charged)}</td>
+                <td className="text-right font-mono text-[var(--text)]">{formatCurrency(claim.charged)}</td>
                 <td className="text-right font-mono text-green">{formatCurrency(claim.paid)}</td>
                 <td>
                   {claim.adjustments?.length ? (
                     claim.adjustments.map((adj: any, adjustmentIndex: number) => (
-                      <div key={adjustmentIndex} className="mb-1 text-xs text-slate-400 last:mb-0">
+                      <div key={adjustmentIndex} className="mb-1 text-xs text-[var(--muted)] last:mb-0">
                         <span className="font-mono text-amber">{adj.group_code}-{adj.reason_code}</span>
-                        <span className="ml-2">{adj.reason_description}</span>
+                        <span className="ml-2 text-[var(--text)]">{adj.reason_description}</span>
                         <span className="ml-2 text-red">({formatCurrency(adj.amount)})</span>
                       </div>
                     ))
                   ) : (
-                    <span className="text-slate-500">No adjustments</span>
+                    <span className="text-[var(--muted)]">No adjustments</span>
                   )}
                 </td>
               </tr>
