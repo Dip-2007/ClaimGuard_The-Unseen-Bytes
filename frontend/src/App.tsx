@@ -210,7 +210,12 @@ export default function App() {
   if (activeTab === 'chat') {
     return (
       <>
-        <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} />
+        <Navbar 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab} 
+          hasResults={!!parseData} 
+          onExport={parseData ? handleExport : undefined} 
+        />
         <AIChatPanel
           context={rawContent || undefined}
           parsedContext={parseData ? JSON.stringify(parseData.parse_result, null, 2) : undefined}
@@ -227,7 +232,12 @@ export default function App() {
         <div className="app-bg app-bg-secondary" />
         <div className="app-bg app-bg-grid" />
 
-        <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} />
+        <Navbar 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab} 
+          hasResults={!!parseData} 
+          onExport={parseData ? handleExport : undefined} 
+        />
 
         <div className="app-frame">
 
@@ -240,13 +250,15 @@ export default function App() {
         <main className="main-content">
           {activeTab === 'upload' && (
             <section className="upload-layout animate-fade-in">
-              <HeroSection />
+              <HeroSection onScrollToUpload={handleScrollToUpload} />
 
-              <FileUpload 
-                onFileProcessed={handleFileProcessed} 
-                onRawContent={(c) => { setRawContent(c); setInitialRawContent(c); }} 
-                onLoading={setLoading} 
-              />
+              <div ref={fileUploadRef}>
+                <FileUpload 
+                  onFileProcessed={handleFileProcessed} 
+                  onRawContent={(c) => { setRawContent(c); setInitialRawContent(c); }} 
+                  onLoading={setLoading} 
+                />
+              </div>
 
               <TrendingSection />
             </section>

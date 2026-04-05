@@ -128,18 +128,18 @@ export default function HeroSection({ onScrollToUpload }: HeroSectionProps) {
               pauseOnHover={true}
               skewAmount={0}
             >
-              <Card className="p-8 flex flex-col justify-center gap-4 bg-gradient-to-br from-[#121214] to-[#0a0a0c] rounded-3xl border border-[#4ade80]/30 shadow-[0_0_30px_rgba(74,222,128,0.08)]">
-                <div className="text-xs font-bold tracking-[0.25em] text-[#4ade80] bg-[#4ade80]/10 border border-[#4ade80]/20 px-4 py-1.5 rounded-full w-fit uppercase">CLAIMS</div>
+              <Card className="p-8 flex flex-col justify-center gap-4 bg-gradient-to-br from-[#121214] to-[#0a0a0c] rounded-3xl border border-[#00d2ff]/30 shadow-[0_0_30px_rgba(0,210,255,0.08)]">
+                <div className="text-xs font-bold tracking-[0.25em] text-[#00d2ff] bg-[#00d2ff]/10 border border-[#00d2ff]/20 px-4 py-1.5 rounded-full w-fit uppercase">CLAIMS</div>
                 <h3 className="text-3xl font-extrabold text-white m-0 tracking-tight">837P claim</h3>
                 <p className="text-[1.05rem] text-[#a0a0a0] m-0 leading-relaxed font-medium">Professional claim structure with payer and provider loops.</p>
               </Card>
-              <Card className="p-8 flex flex-col justify-center gap-4 bg-gradient-to-br from-[#121214] to-[#0a0a0c] rounded-3xl border border-[#4ade80]/30 shadow-[0_0_30px_rgba(74,222,128,0.08)]">
-                <div className="text-xs font-bold tracking-[0.25em] text-[#4ade80] bg-[#4ade80]/10 border border-[#4ade80]/20 px-4 py-1.5 rounded-full w-fit uppercase">PAYMENTS</div>
+              <Card className="p-8 flex flex-col justify-center gap-4 bg-gradient-to-br from-[#121214] to-[#0a0a0c] rounded-3xl border border-[#00d2ff]/30 shadow-[0_0_30px_rgba(0,210,255,0.08)]">
+                <div className="text-xs font-bold tracking-[0.25em] text-[#00d2ff] bg-[#00d2ff]/10 border border-[#00d2ff]/20 px-4 py-1.5 rounded-full w-fit uppercase">PAYMENTS</div>
                 <h3 className="text-3xl font-extrabold text-white m-0 tracking-tight">835 remittance</h3>
                 <p className="text-[1.05rem] text-[#a0a0a0] m-0 leading-relaxed font-medium">Payment and adjustment details for remit analysis.</p>
               </Card>
-              <Card className="p-8 flex flex-col justify-center gap-4 bg-gradient-to-br from-[#121214] to-[#0a0a0c] rounded-3xl border border-[#4ade80]/30 shadow-[0_0_30px_rgba(74,222,128,0.08)]">
-                <div className="text-xs font-bold tracking-[0.25em] text-[#4ade80] bg-[#4ade80]/10 border border-[#4ade80]/20 px-4 py-1.5 rounded-full w-fit uppercase">MEMBERS</div>
+              <Card className="p-8 flex flex-col justify-center gap-4 bg-gradient-to-br from-[#121214] to-[#0a0a0c] rounded-3xl border border-[#00d2ff]/30 shadow-[0_0_30px_rgba(0,210,255,0.08)]">
+                <div className="text-xs font-bold tracking-[0.25em] text-[#00d2ff] bg-[#00d2ff]/10 border border-[#00d2ff]/20 px-4 py-1.5 rounded-full w-fit uppercase">MEMBERS</div>
                 <h3 className="text-3xl font-extrabold text-white m-0 tracking-tight">834 enrollment</h3>
                 <p className="text-[1.05rem] text-[#a0a0a0] m-0 leading-relaxed font-medium">Member additions, changes, and terminations.</p>
               </Card>
@@ -148,10 +148,18 @@ export default function HeroSection({ onScrollToUpload }: HeroSectionProps) {
         </div>
 
         {/* Scroll Indicator - Absolute Centered */}
-        <div className="scroll-indicator">
+        <motion.div 
+          className="scroll-indicator"
+          initial={{ opacity: 0, y: 0 }}
+          animate={{ opacity: 1, y: [0, 12, 0] }}
+          transition={{ 
+            opacity: { duration: 0.8, delay: 1.2 },
+            y: { repeat: Infinity, duration: 2.2, ease: "easeInOut" }
+          }}
+        >
           <span className="scroll-text">SCROLL</span>
           <div className="scroll-line" />
-        </div>
+        </motion.div>
 
       </div>
     </HeroWrapper>

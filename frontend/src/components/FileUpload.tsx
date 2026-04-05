@@ -80,7 +80,7 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
           clearInterval(interval);
         }
         setProgress(Math.min(prog, 95));
-      }, 250);
+      }, 140);
 
       try {
         const formData = new FormData();
@@ -106,20 +106,15 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
           onRawContent(data.parse_result.raw_content);
         }
 
-        // ─── SLOWED DOWN TRANSITION TIMINGS ───
+        // ─── CONSOLIDATED SUCCESS TRANSITION ───
         const t1 = window.setTimeout(() => {
           setUploadState('success');
 
           const t2 = window.setTimeout(() => {
-            setUploadState('complete');
-
-            const t3 = window.setTimeout(() => {
-              onFileProcessed(data);
-            }, 2000);
-            timeoutsRef.current.push(t3);
-          }, 2500);
+            onFileProcessed(data);
+          }, 2000); // 1.5s - 2s for full animation feel
           timeoutsRef.current.push(t2);
-        }, 1200);
+        }, 600);
         timeoutsRef.current.push(t1);
       } catch (err: any) {
         clearInterval(interval);
@@ -196,7 +191,6 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
 
   const isUploading = uploadState === 'uploading';
   const isSuccess = uploadState === 'success';
-  const isComplete = uploadState === 'complete';
   const showShimmer = isUploading || isSuccess;
 
   return (
@@ -259,7 +253,7 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.8, ease: 'easeInOut' }}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
             />
           )}
         </AnimatePresence>
@@ -385,12 +379,11 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
                   animate={{ opacity: [0.4, 0.8, 0.4] }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                 >
-                  Uploading...
-                </UploadingText>
+                  </UploadingText>
               </motion.div>
             )}
 
-            {/* ━━━ SUCCESS STATE ━━━ (SLOWED — visible for 2.5s) */}
+            {/* ━━━ SUCCESS STATE ━━━ (One solid animation) */}
             {isSuccess && (
               <motion.div
                 key="success"
@@ -398,13 +391,13 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
                 animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
                 exit={{ opacity: 0, scale: 0.85, filter: 'blur(6px)', y: -30 }}
                 transition={{
-                  duration: 0.9,
+                  duration: 0.6,
                   ease: [0.16, 1, 0.3, 1],
                   scale: { type: 'spring', stiffness: 200, damping: 18 },
                 }}
                 style={{ textAlign: 'center' }}
               >
-                {/* Animated checkmark with glow ring — NOW INTERACTIVE */}
+                {/* Animated checkmark with glow ring */}
                 <CheckmarkContainer
                   as={motion.div}
                   initial={{ scale: 0, rotate: -180 }}
@@ -427,7 +420,7 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
                         strokeLinejoin="round"
                         initial={{ pathLength: 0 }}
                         animate={{ pathLength: 1 }}
-                        transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
                       />
                     </svg>
                   </CheckmarkInner>
@@ -437,7 +430,7 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
                   as={motion.div}
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.8, duration: 0.6 }}
+                  transition={{ delay: 0.5, duration: 0.5 }}
                 >
                   Success!
                 </SuccessLabel>
@@ -445,53 +438,11 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
                 <UploadingText
                   as={motion.p}
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.35 }}
-                  transition={{ delay: 1, duration: 0.5 }}
+                  animate={{ opacity: 0.6 }}
+                  transition={{ delay: 0.8 }}
+                  style={{ fontSize: '0.9rem', marginTop: 8 }}
                 >
-                  File parsed & validated
-                </UploadingText>
-              </motion.div>
-            )}
-
-            {/* ━━━ COMPLETE STATE ━━━ (SLOWED — visible for 2s) */}
-            {isComplete && (
-              <motion.div
-                key="complete"
-                initial={{ opacity: 0, filter: 'blur(8px)' }}
-                animate={{ opacity: 1, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.7, ease: 'easeOut' }}
-                style={{ textAlign: 'center', width: '100%', cursor: 'pointer' }}
-                onClick={handleTapResult}
-                title="Tap to see result"
-              >
-                <SmallCheckWrap
-                  as={motion.div}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.15 }}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </SmallCheckWrap>
-                <SuccessLabel
-                  as={motion.div}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3, duration: 0.5 }}
-                  style={{ fontSize: '0.95rem', marginTop: 10 }}
-                >
-                  Success!
-                </SuccessLabel>
-                <UploadingText
-                  as={motion.p}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.3 }}
-                  transition={{ delay: 0.5 }}
-                  style={{ fontSize: '0.82rem', marginTop: 4 }}
-                >
-                  Redirecting to results...
+                  Redirecting to your workspace...
                 </UploadingText>
               </motion.div>
             )}
@@ -502,7 +453,7 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
 
       {/* ━━━ FILE ITEM CARD ━━━ */}
       <AnimatePresence>
-        {(isComplete || (isSuccess && fileName)) && fileName && (
+        {isSuccess && fileName && (
           <FileItemCard
             as={motion.div}
             initial={{ opacity: 0, y: 30, scale: 0.95 }}
@@ -512,7 +463,7 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
               type: 'spring',
               stiffness: 200,
               damping: 22,
-              delay: isComplete ? 0.35 : 0.15,
+              delay: 0.2,
             }}
           >
             <FileItemIconWrap>
@@ -1027,17 +978,6 @@ const CheckmarkInner = styled.div`
   border-radius: 50%;
   background: rgba(74, 222, 128, 0.08);
   border: 1.5px solid rgba(74, 222, 128, 0.2);
-`;
-
-const SmallCheckWrap = styled.div`
-  width: 40px;
-  height: 40px;
-  margin: 0 auto;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(74, 222, 128, 0.08);
-  border: 1px solid rgba(74, 222, 128, 0.2);
 `;
 
 const SuccessLabel = styled.div`

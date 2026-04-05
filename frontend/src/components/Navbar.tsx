@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import styled, { keyframes } from 'styled-components';
-import { Home, ShieldCheck, MessageSquare, Plus, FileDown, Bot, Sun, Moon } from 'lucide-react';
+import { Home, ShieldCheck, MessageSquare, Plus, FileDown, Bot, Sun, Moon, Globe } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type TabId = 'upload' | 'results' | 'chat';
@@ -28,7 +28,6 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
   const navMaxWidth = useTransform(smoothScrollY, [0, 150], ["1400px", "1000px"]);
   const navBackdrop = useTransform(smoothScrollY, [0, 150], ['blur(16px)', 'blur(32px)']);
 
-  // These will be set after theme state is initialized below
   const navBackgroundDark = useTransform(smoothScrollY, [0, 150], ['rgba(15, 15, 18, 0.35)', 'rgba(10, 10, 14, 0.65)']);
   const navBackgroundLight = useTransform(smoothScrollY, [0, 150], ['rgba(255, 255, 255, 0.92)', 'rgba(255, 255, 255, 0.98)']);
   const navBoxShadowDark = useTransform(smoothScrollY, [0, 150], [
@@ -40,7 +39,6 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
     '0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05)'
   ]);
 
-  const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
@@ -67,12 +65,6 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
 
   const availableItems = navItems.filter(i => i.available);
 
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   // Lock horizontal scroll to prevent mobile menu overflow
   useEffect(() => {
     document.body.style.overflowX = 'hidden';
@@ -98,50 +90,52 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <LogoLoader />
-        {hasResults && onExport && (
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setExportOpen(!exportOpen)}
-              style={{
-                background: 'rgba(74, 222, 128, 0.12)', border: '1px solid rgba(74, 222, 128, 0.25)',
-                borderRadius: 12, padding: '8px 12px', color: '#4ade80', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', fontWeight: 700,
-              }}
-            >
-              <FileDown size={14} /> Export
-            </button>
-            <AnimatePresence>
-              {exportOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                  style={{
-                    position: 'absolute', right: 0, top: '100%', marginTop: 8,
-                    background: 'rgba(22, 22, 22, 0.96)', border: '1px solid rgba(74, 222, 128, 0.15)',
-                    borderRadius: 16, padding: 6, minWidth: 130, backdropFilter: 'blur(20px)',
-                    boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
-                  }}
-                >
-                  {['json', 'edi', 'csv'].map(fmt => (
-                    <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }}
-                      style={{
-                        display: 'block', width: '100%', padding: '10px 14px', border: 0, borderRadius: 12,
-                        background: 'transparent', color: '#ccc', cursor: 'pointer', textAlign: 'left',
-                        fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit',
-                        transition: 'background 0.15s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      Export {fmt.toUpperCase()}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {hasResults && onExport && (
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setExportOpen(!exportOpen)}
+                style={{
+                  background: 'rgba(74, 222, 128, 0.12)', border: '1px solid rgba(74, 222, 128, 0.25)',
+                  borderRadius: 12, padding: '8px 12px', color: '#4ade80', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', fontWeight: 700,
+                }}
+              >
+                <FileDown size={14} /> Export
+              </button>
+              <AnimatePresence>
+                {exportOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    style={{
+                      position: 'absolute', right: 0, top: '100%', marginTop: 8,
+                      background: 'rgba(22, 22, 22, 0.96)', border: '1px solid rgba(74, 222, 128, 0.15)',
+                      borderRadius: 16, padding: 6, minWidth: 130, backdropFilter: 'blur(20px)',
+                      boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+                    }}
+                  >
+                    {['json', 'edi', 'csv'].map(fmt => (
+                      <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }}
+                        style={{
+                          display: 'block', width: '100%', padding: '10px 14px', border: 0, borderRadius: 12,
+                          background: 'transparent', color: '#ccc', cursor: 'pointer', textAlign: 'left',
+                          fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit',
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        Export {fmt.toUpperCase()}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bottom Navigation Bar */}
@@ -164,19 +158,16 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
           />
         </svg>
 
-        {/* Backdrop for the SVG mask area */}
         <div style={{
           position: 'absolute', inset: 0, 
           backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
           zIndex: -1, pointerEvents: 'none',
         }} />
 
-        {/* Nav Items — left and right of FAB */}
         <div style={{
           position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
           justifyContent: 'space-around', padding: '0 20px', pointerEvents: 'auto',
         }}>
-          {/* Left items */}
           <div style={{ display: 'flex', gap: 8, flex: 1, justifyContent: 'center' }}>
             {availableItems.filter(i => i.id !== 'chat').map(item => (
               <button key={item.id} onClick={() => handleNavClick(item.id)}
@@ -194,10 +185,8 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
             ))}
           </div>
 
-          {/* Center FAB spacer */}
           <div style={{ width: 72 }} />
 
-          {/* Right items */}
           <div style={{ display: 'flex', gap: 8, flex: 1, justifyContent: 'center' }}>
             {availableItems.filter(i => i.id === 'chat').map(item => (
               <button key={item.id} onClick={() => handleNavClick(item.id)}
@@ -216,7 +205,6 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
           </div>
         </div>
 
-        {/* Center FAB Button */}
         <motion.button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           animate={{ rotate: mobileMenuOpen ? 135 : 0 }}
@@ -232,70 +220,6 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
         >
           <Plus size={26} strokeWidth={2.5} />
         </motion.button>
-
-        {/* Orbit Menu */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setMobileMenuOpen(false)}
-                style={{
-                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-                  zIndex: -1, pointerEvents: 'auto',
-                }}
-              />
-              {/* Orbit items — semi-circle above FAB */}
-              {availableItems.map((item, index) => {
-                const totalItems = availableItems.length;
-                const angleRange = 140;
-                const startAngle = -90 - angleRange / 2;
-                const angle = startAngle + (angleRange / (totalItems - 1)) * index;
-                const rad = (angle * Math.PI) / 180;
-                const radius = 110;
-                const x = Math.cos(rad) * radius;
-                const y = Math.sin(rad) * radius;
-
-                return (
-                  <motion.button
-                    key={item.id}
-                    initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
-                    animate={{ opacity: 1, x, y: y - 22, scale: 1 }}
-                    exit={{ opacity: 0, x: 0, y: 0, scale: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 22, delay: index * 0.06 }}
-                    onClick={() => handleNavClick(item.id)}
-                    style={{
-                      position: 'absolute', left: 'calc(50% - 26px)', top: '0px',
-                      width: 52, height: 52, borderRadius: '50%', border: 0, cursor: 'pointer',
-                      background: activeTab === item.id
-                        ? 'linear-gradient(135deg, #4ade80, #22c55e)'
-                        : 'rgba(30, 31, 30, 0.95)',
-                      boxShadow: activeTab === item.id
-                        ? '0 8px 24px rgba(74, 222, 128, 0.3)'
-                        : '0 8px 24px rgba(0,0,0,0.4)',
-                      color: activeTab === item.id ? '#050907' : '#ccc',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center',
-                      justifyContent: 'center', gap: 2, pointerEvents: 'auto',
-                      backdropFilter: 'blur(12px)',
-                      borderWidth: 1, borderStyle: 'solid',
-                      borderColor: activeTab === item.id
-                        ? 'rgba(74, 222, 128, 0.5)'
-                        : 'rgba(255,255,255,0.08)',
-                    }}
-                  >
-                    {item.icon}
-                    <span style={{ fontSize: '0.55rem', fontWeight: 700, lineHeight: 1 }}>
-                      {item.label}
-                    </span>
-                  </motion.button>
-                );
-              })}
-            </>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );
@@ -328,10 +252,8 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
           willChange: 'max-width, background-color, backdrop-filter, box-shadow',
         }}
       >
-        {/* Left — Logo */}
         <LogoLoader />
 
-        {/* Center — Nav Links */}
         <div style={{ display: 'flex', gap: 16 }}>
           {availableItems.map(item => (
             <RippleButton
@@ -347,7 +269,6 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
           ))}
         </div>
 
-        {/* Right — Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {hasResults && onExport && (
             <div style={{ position: 'relative' }}>
@@ -410,7 +331,6 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
             </div>
           )}
 
-          {/* Theme Toggle */}
           <ThemeToggleButton onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
             <motion.div
               key={theme}
@@ -424,7 +344,6 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
             </motion.div>
           </ThemeToggleButton>
 
-          {/* AI Dashboard Universe Button */}
           <UniverseButtonWrapper onClick={() => handleNavClick('chat')}>
             <div className="universe-inner">
               {Array.from({ length: 12 }).map((_, i) => (
@@ -442,15 +361,12 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport }:
     <>
       <MobileNav />
       <DesktopNav />
-      {/* Spacer for fixed desktop nav */}
       <div className="hidden lg:block" style={{ height: 92 }} />
-      {/* Spacer for fixed mobile header */}
       <div className="lg:hidden" style={{ height: 56 }} />
     </>
   );
 }
 
-// ─── RippleButton ────────────────────────────────────────────────────────────
 function RippleButton({
   children, onClick, active,
 }: { children: React.ReactNode; onClick: () => void; active: boolean }) {
@@ -462,7 +378,7 @@ function RippleButton({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// STYLED COMPONENTS & CSS ANIMATIONS
+// STYLED COMPONENTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const ThemeToggleButton = styled.button`
@@ -498,8 +414,6 @@ const ThemeToggleButton = styled.button`
     border-color: rgba(0, 0, 0, 0.15);
   }
 `;
-
-// ─── Logo Shimmer + Slot Machine ─────────────────────────────────────────────
 
 const shimmer = keyframes`
   0% { background-position: -200% center; }
@@ -565,8 +479,6 @@ const LogoLoader = styled.div`
   }
 `;
 
-// ─── Ripple Nav Button ───────────────────────────────────────────────────────
-
 const StyledRippleButton = styled.button`
   position: relative;
   border: 0;
@@ -618,37 +530,15 @@ const StyledRippleButton = styled.button`
     }
   }
 
-  [data-theme="light"] & {
-    color: #666666;
-  }
-
-  [data-theme="light"] &:hover {
-    color: #191919;
-  }
-
-  [data-theme="light"] & .ripple-icon {
-    color: #057642;
-  }
+  [data-theme="light"] & { color: #666666; }
+  [data-theme="light"] &:hover { color: #191919; }
+  [data-theme="light"] & .ripple-icon { color: #057642; }
 
   &.active {
     color: #4ade80;
-
-    .ripple-icon {
-      color: #4ade80;
-    }
-
-    &:hover .ripple-text {
-      transform: translateY(0);
-      opacity: 1;
-    }
-    &:hover .ripple-icon {
-      transform: translateY(120%);
-      opacity: 0;
-    }
+    .ripple-icon { color: #4ade80; }
   }
 `;
-
-// ─── Universe Dashboard Button ───────────────────────────────────────────────
 
 const orbitAnim = (i: number) => keyframes`
   0% { transform: translate(0, 0) scale(1); }
@@ -669,32 +559,17 @@ const UniverseButtonWrapper = styled.button`
   overflow: hidden;
   background: radial-gradient(circle at 40% 40%, rgba(0, 210, 255, 0.35), rgba(58, 123, 213, 0.45)), rgba(7, 10, 25, 0.85);
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(0, 210, 255, 0.2);
-  box-shadow:
-    inset 0 0 14px rgba(0, 210, 255, 0.2),
-    inset 0 1px 1px rgba(255, 255, 255, 0.15),
-    0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
   font-family: inherit;
 
   &:hover {
-    box-shadow:
-      inset 0 0 20px rgba(0, 210, 255, 0.4),
-      0 12px 40px rgba(0, 210, 255, 0.3),
-      0 0 0 1px rgba(0, 210, 255, 0.3);
     transform: translateY(-2px) scale(1.02);
     border-color: rgba(0, 210, 255, 0.4);
   }
 
-  .universe-inner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+  .universe-inner { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
 
   .universe-label {
     position: relative;
@@ -702,44 +577,25 @@ const UniverseButtonWrapper = styled.button`
     color: #fff;
     font-size: 0.75rem;
     font-weight: 800;
-    letter-spacing: 0.08em;
     display: flex;
     align-items: center;
     gap: 5px;
-    text-shadow: 0 0 12px rgba(0, 210, 255, 0.8);
   }
 
-  ${Array.from({ length: 12 }).map((_, i) => {
-    const colors = [
-      'rgba(0, 210, 255, 0.6)', 'rgba(6, 182, 212, 0.5)', 'rgba(34, 211, 238, 0.4)',
-      'rgba(58, 123, 213, 0.7)', 'rgba(30, 64, 175, 0.5)', 'rgba(8, 145, 178, 0.45)',
-      'rgba(37, 99, 235, 0.55)', 'rgba(14, 165, 233, 0.6)', 'rgba(2, 132, 199, 0.55)',
-      'rgba(56, 189, 248, 0.5)', 'rgba(0, 225, 255, 0.45)', 'rgba(30, 58, 138, 0.6)',
-    ];
-    const sizes = [6, 8, 5, 9, 7, 10, 6, 8, 5, 7, 9, 6];
-    const blurs = [2, 3, 2, 4, 3, 5, 2, 3, 4, 3, 2, 4];
-    const lefts = [15, 55, 75, 25, 65, 40, 80, 10, 50, 35, 70, 20];
-    const tops = [20, 60, 30, 70, 15, 50, 75, 45, 25, 65, 40, 55];
+  ${Array.from({ length: 12 }).map((_, i) => `
+    .circle-${i + 1} {
+      position: absolute;
+      width: ${[6, 8, 5, 9, 7, 10, 6, 8, 5, 7, 9, 6][i]}px;
+      height: ${[6, 8, 5, 9, 7, 10, 6, 8, 5, 7, 9, 6][i]}px;
+      border-radius: 50%;
+      background: ${['rgba(0, 210, 255, 0.6)', 'rgba(6, 182, 212, 0.5)', 'rgba(34, 211, 238, 0.4)', 'rgba(58, 123, 213, 0.7)'][i % 4]};
+      filter: blur(${[2, 3, 2, 4, 3, 5, 2, 3, 4, 3, 2, 4][i]}px);
+      left: ${[15, 55, 75, 25, 65, 40, 80, 10, 50, 35, 70, 20][i]}%;
+      top: ${[20, 60, 30, 70, 15, 50, 75, 45, 25, 65, 40, 55][i]}%;
+      animation: ${orbitAnim(i + 1)} ${3 + (i % 4) * 0.8}s ease-in-out infinite;
+      animation-delay: ${i * 0.15}s;
+    }
+  `).join('\n')}
 
-    return `
-      .circle-${i + 1} {
-        position: absolute;
-        width: ${sizes[i]}px;
-        height: ${sizes[i]}px;
-        border-radius: 50%;
-        background: ${colors[i]};
-        filter: blur(${blurs[i]}px);
-        left: ${lefts[i]}%;
-        top: ${tops[i]}%;
-        animation: ${orbitAnim(i + 1).getName()} ${3 + (i % 4) * 0.8}s ease-in-out infinite;
-        animation-delay: ${i * 0.15}s;
-      }
-    `;
-  }).join('\n')}
-
-  /* Inject the keyframes */
-  ${Array.from({ length: 12 }).map((_, i) => {
-    const kf = orbitAnim(i + 1);
-    return kf;
-  })}
+  ${Array.from({ length: 12 }).map((_, i) => orbitAnim(i + 1))}
 `;
