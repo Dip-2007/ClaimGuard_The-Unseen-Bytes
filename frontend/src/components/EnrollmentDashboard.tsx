@@ -34,7 +34,7 @@ export default function EnrollmentDashboard({ summary }: EnrollmentDashboardProp
             <span className="badge badge-info">{summary.total_members} members</span>
             <button
               onClick={() => setIsMaximized(!isMaximized)}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+              className="p-1.5 text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg-elevated)] rounded-md transition-colors"
               title={isMaximized ? "Restore view" : "Maximize view"}
             >
               {isMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -77,7 +77,7 @@ export default function EnrollmentDashboard({ summary }: EnrollmentDashboardProp
           <tbody>
             {summary.members.map((member, index) => (
               <tr key={index} className="table-row">
-                <td className="font-medium text-slate-100">{member.name || 'N/A'}</td>
+                <td className="font-medium text-[var(--text)]">{member.name || 'N/A'}</td>
                 <td>
                   <span className={`badge ${member.is_subscriber ? 'badge-info' : 'badge-warning'}`}>
                     {member.is_subscriber ? 'Subscriber' : 'Dependent'}
@@ -88,12 +88,12 @@ export default function EnrollmentDashboard({ summary }: EnrollmentDashboardProp
                     {member.maintenance_label}
                   </span>
                 </td>
-                <td className="font-mono text-slate-400">
+                <td className="font-mono text-[var(--muted)]">
                   {member.dob ? `${member.dob.slice(0, 4)}-${member.dob.slice(4, 6)}-${member.dob.slice(6, 8)}` : 'N/A'}
                 </td>
-                <td className="text-slate-300">{member.gender || 'N/A'}</td>
+                <td className="text-[var(--text)]">{member.gender || 'N/A'}</td>
                 <td className="text-green">{member.coverage || 'N/A'}</td>
-                <td className="text-slate-400">{member.city && member.state ? `${member.city}, ${member.state} ${member.zip}` : 'N/A'}</td>
+                <td className="text-[var(--muted)]">{member.city && member.state ? `${member.city}, ${member.state} ${member.zip}` : 'N/A'}</td>
               </tr>
             ))}
           </tbody>

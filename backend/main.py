@@ -211,14 +211,25 @@ async def upload_batch(file: UploadFile = File(...)):
 @app.post("/api/fix", response_model=FixResponse)
 async def fix_error(request: FixRequest):
     """Apply a single fix to the EDI content."""
+    import logging
+    logger = logging.getLogger("fix")
+    logger.info(f"FIX REQUEST: error_id={request.error_id}, fix_value='{request.fix_value}', "
+                f"line={request.line_number}, elem={request.element_index}")
+    logger.info(f"RAW CONTENT length={len(request.raw_content)}, first 200 chars: {request.raw_content[:200]}")
+
     corrected, message = apply_fix(
         request.raw_content, request.error_id, request.fix_value,
         target_line=request.line_number, target_elem=request.element_index,
     )
 
+    content_changed = corrected != request.raw_content
+    logger.info(f"FIX RESULT: content_changed={content_changed}, message='{message}'")
+
     # Re-validate
     parse_result = parse_edi(corrected)
     validation = validate_edi(parse_result)
+    
+    logger.info(f"POST-FIX VALIDATION: errors={validation.error_count}, warnings={validation.warning_count}")
 
     return FixResponse(
         success=True,
