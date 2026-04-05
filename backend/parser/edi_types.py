@@ -82,6 +82,7 @@ class UploadResponse(BaseModel):
     transaction_type_label: str = ""
     parse_result: Optional[ParseResult] = None
     validation_result: Optional[ValidationResult] = None
+    activity_id: Optional[str] = None
 
 
 class ChatMessage(BaseModel):
@@ -119,6 +120,7 @@ class FixResponse(BaseModel):
     message: str = ""
     validation_result: Optional[ValidationResult] = None
     parse_result: Optional[ParseResult] = None
+    activity_id: Optional[str] = None
 
 
 class ExportRequest(BaseModel):
@@ -158,3 +160,10 @@ class EnrollmentSummary(BaseModel):
     changes: int = 0
     terminations: int = 0
     members: list[dict] = []
+
+
+class SaveResolvedRequest(BaseModel):
+    """Request to save a resolved (fixed) file to history."""
+    activity_id: str
+    raw_content: str
+    file_name: str

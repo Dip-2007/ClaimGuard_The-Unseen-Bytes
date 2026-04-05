@@ -17,6 +17,7 @@ interface NavbarProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   hasResults: boolean;
+  hasFixedFile?: boolean;
   onExport?: (format: string) => void;
   user?: { id: string; name: string; email: string } | null;
   isGuest?: boolean;
@@ -24,7 +25,7 @@ interface NavbarProps {
 }
 
 // ─── Navbar Component ────────────────────────────────────────────────────────
-export default function Navbar({ activeTab, onTabChange, hasResults, onExport, user, onLogout }: NavbarProps) {
+export default function Navbar({ activeTab, onTabChange, hasResults, hasFixedFile, onExport, user, onLogout }: NavbarProps) {
   const { scrollY } = useScroll();
   const smoothScrollY = useSpring(scrollY, { stiffness: 60, damping: 22, restDelta: 0.001 });
   
@@ -124,24 +125,66 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport, u
                     style={{
                       position: 'absolute', right: 0, top: '100%', marginTop: 8,
                       background: 'rgba(22, 22, 22, 0.96)', border: '1px solid rgba(74, 222, 128, 0.15)',
-                      borderRadius: 16, padding: 6, minWidth: 130, backdropFilter: 'blur(20px)',
+                      borderRadius: 16, padding: 6, minWidth: 150, backdropFilter: 'blur(20px)',
                       boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
                     }}
                   >
-                    {['json', 'edi', 'csv'].map(fmt => (
-                      <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }}
-                        style={{
-                          display: 'block', width: '100%', padding: '10px 14px', border: 0, borderRadius: 12,
-                          background: 'transparent', color: '#ccc', cursor: 'pointer', textAlign: 'left',
-                          fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit',
-                          transition: 'background 0.15s',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                      >
-                        Export {fmt.toUpperCase()}
-                      </button>
-                    ))}
+                    {hasFixedFile ? (
+                      <>
+                        <button onClick={() => { onExport('original'); setExportOpen(false); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '10px 14px', border: 0, borderRadius: 12,
+                            background: 'rgba(255, 255, 255, 0.05)', color: '#ccc', cursor: 'pointer', textAlign: 'left',
+                            fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', marginBottom: 4,
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                        >
+                          Old File (Original)
+                        </button>
+                        <button onClick={() => { onExport('edi'); setExportOpen(false); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '10px 14px', border: 0, borderRadius: 12,
+                            background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80', cursor: 'pointer', textAlign: 'left',
+                            fontSize: '0.82rem', fontWeight: 700, fontFamily: 'inherit', marginBottom: 4,
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(74, 222, 128, 0.25)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(74, 222, 128, 0.15)')}
+                        >
+                          New File (Fixed)
+                        </button>
+                        <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '6px 4px' }} />
+                        <button onClick={() => { onExport('json'); setExportOpen(false); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '10px 14px', border: 0, borderRadius: 12,
+                            background: 'transparent', color: '#aaa', cursor: 'pointer', textAlign: 'left',
+                            fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit',
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          Export JSON
+                        </button>
+                      </>
+                    ) : (
+                      ['json', 'edi', 'csv'].map(fmt => (
+                        <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '10px 14px', border: 0, borderRadius: 12,
+                            background: 'transparent', color: '#ccc', cursor: 'pointer', textAlign: 'left',
+                            fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit',
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          Export {fmt.toUpperCase()}
+                        </button>
+                      ))
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -313,30 +356,88 @@ export default function Navbar({ activeTab, onTabChange, hasResults, onExport, u
                     style={{
                       position: 'absolute', right: 0, top: '100%', marginTop: 8,
                       background: 'rgba(18, 18, 18, 0.98)', border: '1px solid rgba(74, 222, 128, 0.12)',
-                      borderRadius: 16, padding: 6, minWidth: 150, backdropFilter: 'blur(24px)',
+                      borderRadius: 16, padding: 6, minWidth: 180, backdropFilter: 'blur(24px)',
                       boxShadow: '0 24px 80px rgba(0,0,0,0.65)',
                     }}
                   >
-                    {['json', 'edi', 'csv'].map(fmt => (
-                      <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }}
-                        style={{
-                          display: 'block', width: '100%', padding: '11px 14px', border: 0, borderRadius: 12,
-                          background: 'transparent', color: '#bbb', cursor: 'pointer', textAlign: 'left',
-                          fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit',
-                          transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                          e.currentTarget.style.color = '#fff';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'transparent';
-                          e.currentTarget.style.color = '#bbb';
-                        }}
-                      >
-                        Export {fmt.toUpperCase()}
-                      </button>
-                    ))}
+                    {hasFixedFile ? (
+                      <>
+                        <button onClick={() => { onExport('original'); setExportOpen(false); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '11px 14px', border: 0, borderRadius: 12,
+                            background: 'rgba(255, 255, 255, 0.05)', color: '#ccc', cursor: 'pointer', textAlign: 'left',
+                            fontSize: '0.85rem', fontWeight: 600, fontFamily: 'inherit', marginBottom: 4,
+                            transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                            e.currentTarget.style.color = '#fff';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                            e.currentTarget.style.color = '#ccc';
+                          }}
+                        >
+                          Old File (Original)
+                        </button>
+                        <button onClick={() => { onExport('edi'); setExportOpen(false); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '11px 14px', border: 0, borderRadius: 12,
+                            background: 'rgba(74, 222, 128, 0.12)', color: '#4ade80', cursor: 'pointer', textAlign: 'left',
+                            fontSize: '0.85rem', fontWeight: 700, fontFamily: 'inherit', marginBottom: 4,
+                            transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(74, 222, 128, 0.22)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'rgba(74, 222, 128, 0.12)';
+                          }}
+                        >
+                          New File (Fixed)
+                        </button>
+                        <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '6px 4px' }} />
+                        <button onClick={() => { onExport('json'); setExportOpen(false); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '11px 14px', border: 0, borderRadius: 12,
+                            background: 'transparent', color: '#bbb', cursor: 'pointer', textAlign: 'left',
+                            fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit',
+                            transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                            e.currentTarget.style.color = '#fff';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = '#bbb';
+                          }}
+                        >
+                          Export JSON
+                        </button>
+                      </>
+                    ) : (
+                      ['json', 'edi', 'csv'].map(fmt => (
+                        <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '11px 14px', border: 0, borderRadius: 12,
+                            background: 'transparent', color: '#bbb', cursor: 'pointer', textAlign: 'left',
+                            fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit',
+                            transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                            e.currentTarget.style.color = '#fff';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = '#bbb';
+                          }}
+                        >
+                          Export {fmt.toUpperCase()}
+                        </button>
+                      ))
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>

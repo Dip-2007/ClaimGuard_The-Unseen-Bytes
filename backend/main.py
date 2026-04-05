@@ -17,6 +17,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from contextlib import asynccontextmanager
+import httpx
 
 from parser.x12_parser import parse_edi
 from parser.edi_types import (
@@ -576,6 +577,17 @@ async def get_sample(filename: str):
         content = f.read()
 
     return {"filename": filename, "content": content}
+
+@app.get("/api/fetch-cloudinary")
+async def fetch_cloudinary(url: str, current_user: dict = Depends(get_current_user)):
+    """Fetch file directly from Cloudinary server-side to bypass browser CORS block."""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            return Response(content=response.text, media_type="text/plain")
+    except Exception as e:
+        raise HTTPException(400, f"Error fetching from Cloudinary: {str(e)}")
 
 
 # ── User History ───────────────────────────────────────────────────────

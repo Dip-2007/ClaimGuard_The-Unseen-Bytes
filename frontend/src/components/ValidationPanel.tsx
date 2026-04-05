@@ -56,6 +56,7 @@ interface ValidationPanelProps {
   onFix: (errorId: string, fixValue: string, lineNumber: number, elementIndex: number) => void;
   onFixAll: () => void;
   onRawEdit: (newContent: string) => void;
+  onSaveProgress?: () => void;
   rawContent: string;
   initialRawContent?: string;
 }
@@ -72,7 +73,7 @@ const severityBadgeClass: Record<string, string> = {
   info: 'badge-info',
 };
 
-export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit, rawContent, initialRawContent }: ValidationPanelProps) {
+export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit, onSaveProgress, rawContent, initialRawContent }: ValidationPanelProps) {
   const [isMaximized, setIsMaximized] = useState(false);
   const [filter, setFilter] = useState<'all' | 'error' | 'warning' | 'info'>('all');
   const [manualFixId, setManualFixId] = useState<string | null>(null);
@@ -150,6 +151,28 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
           <p className="panel-subtitle">Filter findings, inspect context, and apply deterministic corrections.</p>
         </div>
         <div className="flex gap-2">
+          {!isEditingRaw && onSaveProgress && (
+            <button 
+              onClick={onSaveProgress} 
+              style={{
+                background: 'rgba(84, 208, 255, 0.1)', border: '1px solid rgba(84, 208, 255, 0.2)',
+                borderRadius: 10, padding: '6px 12px', color: '#54d0ff', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', fontWeight: 700,
+                fontFamily: 'inherit', transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(84, 208, 255, 0.18)';
+                e.currentTarget.style.borderColor = 'rgba(84, 208, 255, 0.35)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(84, 208, 255, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(84, 208, 255, 0.2)';
+              }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+              Save Progress
+            </button>
+          )}
           {!isEditingRaw && (
             <button 
               onClick={() => { setEditableRawContent(formatEdi(rawContent)); setIsEditingRaw(true); }} 
@@ -290,24 +313,24 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
         <>
           <div className="flex justify-center items-center divide-x divide-gray-500/30 mb-8 py-2 mt-2 w-full">
             <div className="px-10 flex flex-col items-center text-center gap-1">
-              <span className="text-white font-medium text-[1.05rem]">Errors</span>
+              <span className="text-[var(--text)] font-medium text-[1.05rem]">Errors</span>
               <strong className="text-red text-2xl font-bold leading-tight block">{validation.error_count}</strong>
-              <span className="text-gray-400 text-[0.9rem]">Blocking issues</span>
+              <span className="text-[var(--muted)] text-[0.9rem]">Blocking issues</span>
             </div>
             <div className="px-10 flex flex-col items-center text-center gap-1">
-              <span className="text-white font-medium text-[1.05rem]">Warnings</span>
+              <span className="text-[var(--text)] font-medium text-[1.05rem]">Warnings</span>
               <strong className="text-amber text-2xl font-bold leading-tight block">{validation.warning_count}</strong>
-              <span className="text-gray-400 text-[0.9rem]">Review recommended</span>
+              <span className="text-[var(--muted)] text-[0.9rem]">Review recommended</span>
             </div>
             <div className="px-10 flex flex-col items-center text-center gap-1">
-              <span className="text-white font-medium text-[1.05rem]">Info</span>
+              <span className="text-[var(--text)] font-medium text-[1.05rem]">Info</span>
               <strong className="text-accent text-2xl font-bold leading-tight block">{validation.info_count}</strong>
-              <span className="text-gray-400 text-[0.9rem]">Helpful notes</span>
+              <span className="text-[var(--muted)] text-[0.9rem]">Helpful notes</span>
             </div>
             <div className="px-10 flex flex-col items-center text-center gap-1">
-              <span className="text-white font-medium text-[1.05rem]">Fixable</span>
+              <span className="text-[var(--text)] font-medium text-[1.05rem]">Fixable</span>
               <strong className="text-green text-2xl font-bold leading-tight block">{fixableCount}</strong>
-              <span className="text-gray-400 text-[0.9rem]">Automatic candidates</span>
+              <span className="text-[var(--muted)] text-[0.9rem]">Automatic candidates</span>
             </div>
           </div>
 
@@ -340,8 +363,8 @@ export default function ValidationPanel({ validation, onFix, onFixAll, onRawEdit
                       {err.loop_location && <span className="status-chip px-4 py-1.5 subtle">Loop {err.loop_location}</span>}
                       {err.line_number > 0 && <span className="status-chip px-4 py-1.5 subtle">Line {err.line_number}</span>}
                     </div>
-                    <p className="mb-3 text-[0.95rem] leading-relaxed text-slate-100">{err.message}</p>
-                    {err.suggestion && <p className="text-[0.95rem] leading-relaxed text-slate-400">Suggestion: {err.suggestion}</p>}
+                    <p className="mb-3 text-[0.95rem] leading-relaxed text-[var(--text)]">{err.message}</p>
+                    {err.suggestion && <p className="text-[0.95rem] leading-relaxed text-[var(--muted)]">Suggestion: {err.suggestion}</p>}
                   </div>
                 </div>
 

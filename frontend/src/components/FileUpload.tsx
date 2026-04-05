@@ -541,48 +541,48 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading, g
 function Doc3DSVG({ isDragover }: { isDragover: boolean }) {
   return (
     <svg width="64" height="74" viewBox="0 0 80 92" fill="none" xmlns="http://www.w3.org/2000/svg"
-      style={{ filter: 'drop-shadow(0 20px 40px rgba(59, 89, 152, 0.5)) drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }}
+      style={{ filter: 'drop-shadow(0 20px 40px var(--doc-shadow)) drop-shadow(0 4px 12px rgba(0,0,0,0.15))' }}
     >
       {/* Shadow page — deepest layer */}
-      <rect x="6" y="10" width="48" height="60" rx="6" fill="#1a2744" opacity="0.7" />
+      <rect x="6" y="10" width="48" height="60" rx="6" fill="var(--doc-shadow)" opacity="0.7" />
 
       {/* Middle page layer */}
-      <rect x="12" y="6" width="48" height="60" rx="6" fill="#263c64" stroke="#3d5a8a" strokeWidth="0.8" />
+      <rect x="12" y="6" width="48" height="60" rx="6" fill="var(--doc-mid)" stroke="var(--border)" strokeWidth="0.8" />
 
       {/* Front page — main document */}
       <rect x="18" y="14" width="48" height="60" rx="6"
         fill="url(#docGrad)"
-        stroke={isDragover ? '#7cb3ff' : '#5b7cc2'}
+        stroke={isDragover ? 'var(--accent)' : 'var(--border)'}
         strokeWidth="1.2"
       />
 
       {/* Folded corner with shadow */}
-      <path d="M52 14V30H66" fill="#2a3a5c" />
+      <path d="M52 14V30H66" fill="var(--doc-fold-dark)" />
       <path d="M52 14V30H66" fill="url(#foldGrad)" />
-      <path d="M52 14L66 30" stroke={isDragover ? '#7cb3ff' : '#5b7cc2'} strokeWidth="0.8" />
+      <path d="M52 14L66 30" stroke={isDragover ? 'var(--accent)' : 'var(--border)'} strokeWidth="0.8" />
 
       {/* Text lines with stagger animation feel */}
-      <rect x="26" y="38" width="32" height="3" rx="1.5" fill="#5b7cc2" opacity="0.65" />
-      <rect x="26" y="46" width="24" height="3" rx="1.5" fill="#5b7cc2" opacity="0.45" />
-      <rect x="26" y="54" width="28" height="3" rx="1.5" fill="#5b7cc2" opacity="0.35" />
-      <rect x="26" y="62" width="18" height="3" rx="1.5" fill="#5b7cc2" opacity="0.25" />
+      <rect x="26" y="38" width="32" height="3" rx="1.5" fill="var(--doc-lines)" opacity="0.65" />
+      <rect x="26" y="46" width="24" height="3" rx="1.5" fill="var(--doc-lines)" opacity="0.45" />
+      <rect x="26" y="54" width="28" height="3" rx="1.5" fill="var(--doc-lines)" opacity="0.35" />
+      <rect x="26" y="62" width="18" height="3" rx="1.5" fill="var(--doc-lines)" opacity="0.25" />
 
       {/* Upload arrow circle with glow */}
       <circle cx="56" cy="64" r="15"
-        fill="#0d1f33"
-        stroke={isDragover ? '#4ade80' : '#3dd9c1'}
+        fill="var(--doc-circle)"
+        stroke={isDragover ? 'var(--accent)' : 'var(--teal)'}
         strokeWidth="1.8"
       />
       {isDragover && (
         <circle cx="56" cy="64" r="15"
           fill="none"
-          stroke="#4ade80"
+          stroke="var(--accent)"
           strokeWidth="0.5"
           opacity="0.4"
         />
       )}
       <path d="M56 71V57M50 61l6-6 6 6"
-        stroke={isDragover ? '#4ade80' : '#3dd9c1'}
+        stroke={isDragover ? 'var(--accent)' : 'var(--teal)'}
         strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -591,13 +591,13 @@ function Doc3DSVG({ isDragover }: { isDragover: boolean }) {
       {/* Gradients */}
       <defs>
         <linearGradient id="docGrad" x1="18" y1="14" x2="66" y2="74" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#4a6fa5" />
-          <stop offset="0.5" stopColor="#3b5998" />
-          <stop offset="1" stopColor="#2d4373" />
+          <stop stopColor="var(--doc-front-top)" />
+          <stop offset="0.5" stopColor="var(--doc-front-mid)" />
+          <stop offset="1" stopColor="var(--doc-front-bot)" />
         </linearGradient>
         <linearGradient id="foldGrad" x1="52" y1="14" x2="66" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#2a3a5c" />
-          <stop offset="1" stopColor="#1a2744" />
+          <stop stopColor="var(--doc-fold)" />
+          <stop offset="1" stopColor="var(--doc-fold-dark)" />
         </linearGradient>
       </defs>
     </svg>
@@ -783,15 +783,15 @@ const ShimmerBg = styled.div`
       -55deg,
       transparent 0px,
       transparent 8px,
-      rgba(61, 217, 193, 0.035) 8px,
-      rgba(61, 217, 193, 0.035) 9px
+      var(--shimmer-lines) 8px,
+      var(--shimmer-lines) 9px
     ),
     linear-gradient(
       135deg,
-      rgba(13, 42, 60, 0.95) 0%,
-      rgba(20, 70, 80, 0.85) 30%,
-      rgba(10, 50, 65, 0.9) 60%,
-      rgba(8, 30, 45, 0.95) 100%
+      var(--shimmer-1) 0%,
+      var(--shimmer-2) 30%,
+      var(--shimmer-3) 60%,
+      var(--shimmer-4) 100%
     );
   background-size: 400% 100%, 100% 100%;
   animation: ${diagonalShimmer} 10s linear infinite;

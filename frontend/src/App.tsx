@@ -20,6 +20,7 @@ interface ParseData {
   validation_result: any;
   transaction_type: string;
   transaction_type_label: string;
+  file_name?: string;
 }
 
 export default function App() {
@@ -70,6 +71,8 @@ export default function App() {
   const handleScrollToUpload = useCallback(() => {
     fileUploadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
+
+  const [saveMessage, setSaveMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const handlePopupClick = useCallback((sectionId: SectionId) => {
     setActiveSection(sectionId);
@@ -231,16 +234,20 @@ export default function App() {
     async (format: string) => {
       if (!rawContent) return;
       try {
+        const isOriginal = format === 'original';
+        const exportFormat = isOriginal ? 'edi' : format;
+        const targetContent = isOriginal ? initialRawContent : rawContent;
+
         const res = await fetch('/api/export', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...getAuthHeaders()
           },
-          body: JSON.stringify({ raw_content: rawContent, format: format }),
+          body: JSON.stringify({ raw_content: targetContent, format: exportFormat }),
         });
 
-        if (format === 'json') {
+        if (exportFormat === 'json') {
           const data = await res.json();
           const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
@@ -256,15 +263,49 @@ export default function App() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = format === 'edi' ? 'corrected.edi' : 'errors.csv';
+        a.download = exportFormat === 'edi' ? (isOriginal ? 'original.edi' : 'corrected.edi') : 'errors.csv';
         a.click();
         URL.revokeObjectURL(url);
       } catch (err) {
         console.error('Export error:', err);
       }
     },
-    [rawContent],
+    [rawContent, initialRawContent, getAuthHeaders],
   );
+
+  const handleSaveProgress = useCallback(async () => {
+    if (!rawContent || !parseData) return;
+    setLoading(true);
+    try {
+      const blob = new Blob([rawContent], { type: 'text/plain' });
+      const formData = new FormData();
+      formData.append('file', blob, parseData.file_name || 'saved_progress.edi');
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSaveMessage({ text: 'Progress saved to history!', type: 'success' });
+        // Optionally update initialRawContent to match rawContent if we want "original" to refer to this new point
+        // setInitialRawContent(rawContent);
+        // Updating parseData so the UI might reflect new transaction details if needed
+        handleFileProcessed(data);
+        setTimeout(() => setSaveMessage(null), 4000);
+      } else {
+        setSaveMessage({ text: 'Failed to save progress.', type: 'error' });
+        setTimeout(() => setSaveMessage(null), 4000);
+      }
+    } catch (err) {
+      console.error('Save progress error:', err);
+      setSaveMessage({ text: 'An error occurred while saving.', type: 'error' });
+      setTimeout(() => setSaveMessage(null), 4000);
+    } finally {
+      setLoading(false);
+    }
+  }, [rawContent, parseData, getAuthHeaders, handleFileProcessed]);
 
 
   // Show auth screen if user is not authenticated and not a guest
@@ -275,7 +316,15 @@ export default function App() {
   if (activeTab === 'chat') {
     return (
       <>
-        <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} user={user} onLogout={handleLogout} />
+        <Navbar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          hasResults={!!parseData}
+          hasFixedFile={rawContent !== initialRawContent}
+          onExport={parseData ? handleExport : undefined}
+          user={user}
+          onLogout={handleLogout}
+        />
         <AIChatPanel
           context={rawContent || undefined}
           parsedContext={parseData ? JSON.stringify(parseData.parse_result, null, 2) : undefined}
@@ -293,7 +342,7 @@ export default function App() {
         <div className="app-bg app-bg-secondary" />
         <div className="app-bg app-bg-grid" />
 
-        <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} onExport={parseData ? handleExport : undefined} user={user} isGuest={isGuest} onLogout={handleLogout} />
+        <Navbar activeTab={activeTab} onTabChange={setActiveTab} hasResults={!!parseData} hasFixedFile={rawContent !== initialRawContent} onExport={parseData ? handleExport : undefined} user={user} isGuest={isGuest} onLogout={handleLogout} />
 
         <div className="app-frame">
 
@@ -324,9 +373,97 @@ export default function App() {
                 <HistoryDashboard
                   getAuthHeaders={getAuthHeaders}
                   isGuest={isGuest}
-                  onViewResult={(metadata) => {
-                    if (metadata.cloudinary_url) {
-                      window.open(metadata.cloudinary_url, '_blank');
+                  onContinueFixing={async (metadata) => {
+                    let fileText = '';
+                    if (metadata?.raw_content) {
+                      fileText = metadata.raw_content;
+                    } else if (metadata?.cloudinary_url) {
+                      try {
+                        const fileRes = await fetch(`/api/fetch-cloudinary?url=${encodeURIComponent(metadata.cloudinary_url)}`, {
+                          headers: getAuthHeaders()
+                        });
+                        if (fileRes.ok) fileText = await fileRes.text();
+                      } catch (err) {
+                        console.error('Failed to load file from Cloudinary:', err);
+                      }
+                    }
+
+                    if (fileText) {
+                      try {
+                        setLoading(true);
+                        // Re-parse through the backend
+                        const blob = new Blob([fileText], { type: 'text/plain' });
+                        const formData = new FormData();
+                        formData.append('file', blob, metadata.file_name || 'resume.edi');
+
+                        const parseRes = await fetch('/api/upload', {
+                          method: 'POST',
+                          headers: getAuthHeaders(),
+                          body: formData,
+                        });
+                        const data = await parseRes.json();
+
+                        if (data.success) {
+                          setRawContent(data.parse_result.raw_content);
+                          setInitialRawContent(data.parse_result.raw_content);
+                          await handleFileProcessed(data);
+                          setActiveTab('results');
+                          setActiveSection('validation');
+                        }
+                      } catch (err) {
+                        console.error('Failed to process file for fixing:', err);
+                        alert('Error processing file.');
+                      } finally {
+                        setLoading(false);
+                      }
+                    } else {
+                      alert('The file content is no longer available in history. Please upload a new file.');
+                    }
+                  }}
+                  onViewResult={async (metadata) => {
+                    let fileText = '';
+                    if (metadata?.raw_content) {
+                      fileText = metadata.raw_content;
+                    } else if (metadata?.cloudinary_url) {
+                      try {
+                        const fileRes = await fetch(`/api/fetch-cloudinary?url=${encodeURIComponent(metadata.cloudinary_url)}`, {
+                          headers: getAuthHeaders()
+                        });
+                        if (fileRes.ok) fileText = await fileRes.text();
+                      } catch (err) {
+                        console.error('Failed to load file from Cloudinary:', err);
+                      }
+                    }
+
+                    if (fileText) {
+                      try {
+                        setLoading(true);
+                        const blob = new Blob([fileText], { type: 'text/plain' });
+                        const formData = new FormData();
+                        formData.append('file', blob, metadata.file_name || 'file.edi');
+
+                        const parseRes = await fetch('/api/upload', {
+                          method: 'POST',
+                          headers: getAuthHeaders(),
+                          body: formData,
+                        });
+                        const data = await parseRes.json();
+
+                        if (data.success) {
+                          setRawContent(data.parse_result.raw_content);
+                          setInitialRawContent(data.parse_result.raw_content);
+                          await handleFileProcessed(data);
+                          setActiveTab('results');
+                          setActiveSection('summary');
+                        }
+                      } catch (err) {
+                        console.error('Failed to process file for analytics:', err);
+                        alert('Error processing file.');
+                      } finally {
+                        setLoading(false);
+                      }
+                    } else {
+                      alert('The file content is no longer available in history. Please upload a new file.');
                     }
                   }}
                 />
@@ -364,6 +501,28 @@ export default function App() {
                   </div>
                 </div>
 
+                <AnimatePresence>
+                  {saveMessage && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                      className={`absolute top-24 right-8 px-4 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-3 border backdrop-blur-md ${
+                        saveMessage.type === 'success' 
+                          ? 'bg-green-500/10 border-green-500/30 text-green-400' 
+                          : 'bg-red-500/10 border-red-500/30 text-red-400'
+                      }`}
+                    >
+                      {saveMessage.type === 'success' ? (
+                        <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      )}
+                      <span className="font-semibold text-[0.85rem]">{saveMessage.text}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <div className="results-workspace">
                   {activeSection === 'validation' && (
                     <motion.div layoutId="workspace-validation" className="workspace-center-panel" transition={{ type: 'spring', stiffness: 90, damping: 20, mass: 1.2 }}>
@@ -374,6 +533,7 @@ export default function App() {
                         onFix={handleFix}
                         onFixAll={handleFixAll}
                         onRawEdit={handleRawEdit}
+                        onSaveProgress={handleSaveProgress}
                       />
                     </motion.div>
                   )}
@@ -409,7 +569,7 @@ export default function App() {
       <AnimatePresence>
         {activeTab === 'results' && parseData && (() => {
           const allSections: { id: SectionId; label: string; content: React.ReactNode }[] = [
-            { id: 'validation', label: 'Validation Results', content: <ValidationPanel validation={parseData.validation_result} rawContent={rawContent} initialRawContent={initialRawContent} onFix={handleFix} onFixAll={handleFixAll} onRawEdit={handleRawEdit} /> },
+            { id: 'validation', label: 'Validation Results', content: <ValidationPanel validation={parseData.validation_result} rawContent={rawContent} initialRawContent={initialRawContent} onFix={handleFix} onFixAll={handleFixAll} onRawEdit={handleRawEdit} onSaveProgress={handleSaveProgress} /> },
             { id: 'parsed', label: 'Parsed Structure', content: <ParsedTreeViewer loops={parseData.parse_result?.loops || []} transactionType={parseData.transaction_type} /> },
           ];
           if (parseData.transaction_type === '835' && remittance) {

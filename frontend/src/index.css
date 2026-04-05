@@ -25,6 +25,21 @@
   --overlay: rgba(0, 0, 0, 0.5);
   --code-bg: #1a1a2e;
   --input-bg: rgba(255, 255, 255, 0.04);
+  /* 3D Dropzone Variables - Dark */
+  --shimmer-1: rgba(30, 70, 100, 0.95);
+  --shimmer-2: rgba(45, 110, 125, 0.85);
+  --shimmer-3: rgba(25, 80, 110, 0.9);
+  --shimmer-4: rgba(18, 55, 80, 0.95);
+  --shimmer-lines: rgba(61, 217, 193, 0.035);
+  --doc-shadow: #1a2744;
+  --doc-mid: #263c64;
+  --doc-front-top: #4a6fa5;
+  --doc-front-mid: #3b5998;
+  --doc-front-bot: #2d4373;
+  --doc-fold: #2a3a5c;
+  --doc-fold-dark: #1a2744;
+  --doc-lines: #5b7cc2;
+  --doc-circle: #0d1f33;
 }
 
 /* ═══ LIGHT MODE — LinkedIn-style (Green Accent) ═══ */
@@ -52,6 +67,21 @@
   --overlay: rgba(255, 255, 255, 0.75);
   --code-bg: #f3f2ef;
   --input-bg: rgba(0, 0, 0, 0.03);
+  /* 3D Dropzone Variables - Light */
+  --shimmer-1: #ffffff;
+  --shimmer-2: #e0f2fe;
+  --shimmer-3: #ecfdf5;
+  --shimmer-4: #f8fafc;
+  --shimmer-lines: rgba(13, 148, 136, 0.06);
+  --doc-shadow: rgba(0, 0, 0, 0.15);
+  --doc-mid: #f3f4f6;
+  --doc-front-top: #ffffff;
+  --doc-front-mid: #fbfbfc;
+  --doc-front-bot: #eff6ff;
+  --doc-fold: #ffffff;
+  --doc-fold-dark: #d1d5db;
+  --doc-lines: #94a3b8;
+  --doc-circle: #ffffff;
 }
 
 /* Light mode scrollbar */
