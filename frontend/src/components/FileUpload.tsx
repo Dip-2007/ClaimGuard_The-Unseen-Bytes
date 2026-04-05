@@ -8,6 +8,7 @@ interface FileUploadProps {
   onFileProcessed: (data: any) => void;
   onRawContent: (content: string) => void;
   onLoading: (loading: boolean) => void;
+  getAuthHeaders: () => Record<string, string>;
 }
 
 const sampleFiles = [
@@ -33,7 +34,7 @@ const sampleFiles = [
 
 type UploadState = 'idle' | 'dragover' | 'uploading' | 'success' | 'complete';
 
-export default function FileUpload({ onFileProcessed, onRawContent, onLoading }: FileUploadProps) {
+export default function FileUpload({ onFileProcessed, onRawContent, onLoading, getAuthHeaders }: FileUploadProps) {
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -89,7 +90,13 @@ export default function FileUpload({ onFileProcessed, onRawContent, onLoading }:
         const isZip = file.name.toLowerCase().endsWith('.zip');
         const endpoint = isZip ? '/api/upload-batch' : '/api/upload';
 
-        const response = await fetch(endpoint, { method: 'POST', body: formData });
+        const response = await fetch(endpoint, { 
+          method: 'POST', 
+          headers: {
+            ...getAuthHeaders()
+          },
+          body: formData 
+        });
 
         if (!response.ok) {
           const err = await response.json().catch(() => ({ detail: 'Upload failed' }));

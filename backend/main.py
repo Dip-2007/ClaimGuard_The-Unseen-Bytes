@@ -7,14 +7,16 @@ from __future__ import annotations
 import io
 import json
 import zipfile
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from contextlib import asynccontextmanager
 
 from parser.x12_parser import parse_edi
 from parser.edi_types import (
@@ -29,12 +31,29 @@ from fixer.auto_fix import apply_fix, apply_all_fixes
 from ai.gemini_chat import chat_with_gemini
 from utils.npi_validator import lookup_npi
 
+from db.database import connect_db, close_db, get_db, configure_cloudinary, upload_to_cloudinary
+from auth.auth_utils import get_current_user
+from auth.auth_routes import router as auth_router
+from db.models import ActivityItem, HistoryResponse
+
+# ── App Lifecycle ──────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown events."""
+    await connect_db()
+    configure_cloudinary()
+    yield
+    await close_db()
+
+
 # ── App Setup ──────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="EDI ClaimGuard API",
     description="AI-Powered US Healthcare X12 EDI Parser & Validator",
-    version="1.0.0",
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -44,6 +63,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include auth routes
+app.include_router(auth_router, prefix="/api/auth")
 
 
 # ── Health Check ───────────────────────────────────────────────────────
@@ -74,7 +96,10 @@ async def root():
 # ── Upload & Parse ─────────────────────────────────────────────────────
 
 @app.post("/api/upload", response_model=UploadResponse)
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: Optional[dict] = Depends(get_current_user),
+):
     """Upload a single EDI file — auto-detect, parse, and validate."""
     try:
         content = await file.read()
@@ -87,6 +112,29 @@ async def upload_file(file: UploadFile = File(...)):
 
     # Validate
     validation = validate_edi(parse_result)
+
+    # Track activity for authenticated users
+    if current_user:
+        db = get_db()
+        try:
+            # Upload to Cloudinary
+            cloud_result = upload_to_cloudinary(content, file.filename or "upload.edi")
+            cloudinary_url = cloud_result.get("url", "")
+        except Exception:
+            cloudinary_url = ""
+
+        await db.activities.insert_one({
+            "user_id": current_user["sub"],
+            "type": "upload",
+            "title": f"Parsed {parse_result.transaction_type_label}",
+            "description": f"File: {file.filename or 'upload.edi'} — {validation.error_count} errors, {validation.warning_count} warnings",
+            "file_name": file.filename or "upload.edi",
+            "transaction_type": parse_result.transaction_type,
+            "cloudinary_url": cloudinary_url,
+            "error_count": validation.error_count,
+            "warning_count": validation.warning_count,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
 
     return UploadResponse(
         success=True,
@@ -214,7 +262,10 @@ async def validate_raw_content(request: ExportRequest):
 # ── AI Chat ────────────────────────────────────────────────────────────
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(
+    request: ChatRequest,
+    current_user: Optional[dict] = Depends(get_current_user),
+):
     """AI chat endpoint — contextual Q&A about EDI files."""
     try:
         reply = await chat_with_gemini(
@@ -222,6 +273,21 @@ async def chat(request: ChatRequest):
             context=request.context,
             history=request.history,
         )
+
+        # Track chat activity for authenticated users
+        if current_user:
+            db = get_db()
+            short_msg = request.message[:80] + ("..." if len(request.message) > 80 else "")
+            await db.activities.insert_one({
+                "user_id": current_user["sub"],
+                "type": "chat",
+                "title": f"Chat: {short_msg}",
+                "description": reply[:120] + ("..." if len(reply) > 120 else ""),
+                "message": request.message,
+                "reply": reply,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+
         return ChatResponse(reply=reply)
     except Exception as e:
         return ChatResponse(
@@ -510,6 +576,97 @@ async def get_sample(filename: str):
         content = f.read()
 
     return {"filename": filename, "content": content}
+
+
+# ── User History ───────────────────────────────────────────────────────
+
+@app.get("/api/history", response_model=HistoryResponse)
+async def get_history(current_user: dict = Depends(get_current_user)):
+    """Get the authenticated user's activity history."""
+    if not current_user:
+        return HistoryResponse(activities=[], total=0)
+
+    db = get_db()
+    cursor = db.activities.find(
+        {"user_id": current_user["sub"]}
+    ).sort("created_at", -1).limit(100)
+
+    activities = []
+    async for doc in cursor:
+        activities.append(ActivityItem(
+            id=str(doc["_id"]),
+            type=doc["type"],
+            title=doc["title"],
+            description=doc.get("description", ""),
+            timestamp=doc.get("created_at", ""),
+            metadata={
+                k: v for k, v in doc.items()
+                if k not in ("_id", "user_id", "type", "title", "description", "created_at")
+            },
+        ))
+
+    return HistoryResponse(activities=activities, total=len(activities))
+
+
+@app.get("/api/user/chats")
+async def get_user_chats(current_user: dict = Depends(get_current_user)):
+    """Get the authenticated user's saved chat sessions."""
+    if not current_user:
+        return {"sessions": []}
+
+    db = get_db()
+    cursor = db.chats.find(
+        {"user_id": current_user["sub"]}
+    ).sort("updated_at", -1).limit(50)
+
+    sessions = []
+    async for doc in cursor:
+        sessions.append({
+            "id": str(doc["_id"]),
+            "title": doc.get("title", ""),
+            "messages": doc.get("messages", []),
+            "filter_tag": doc.get("filter_tag", "All"),
+            "attached_file_name": doc.get("attached_file_name"),
+            "created_at": doc.get("created_at", ""),
+            "updated_at": doc.get("updated_at", ""),
+        })
+
+    return {"sessions": sessions}
+
+
+@app.post("/api/user/chats")
+async def save_user_chat(
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """Save or update a chat session for the authenticated user."""
+    if not current_user:
+        return {"success": False, "message": "Login required to save chats"}
+
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    chat_doc = {
+        "user_id": current_user["sub"],
+        "title": body.get("title", "Untitled"),
+        "messages": body.get("messages", []),
+        "filter_tag": body.get("filter_tag", "All"),
+        "attached_file_name": body.get("attached_file_name"),
+        "updated_at": now,
+    }
+
+    session_id = body.get("session_id")
+    if session_id:
+        from bson import ObjectId
+        await db.chats.update_one(
+            {"_id": ObjectId(session_id), "user_id": current_user["sub"]},
+            {"$set": chat_doc},
+        )
+        return {"success": True, "id": session_id}
+    else:
+        chat_doc["created_at"] = now
+        result = await db.chats.insert_one(chat_doc)
+        return {"success": True, "id": str(result.inserted_id)}
 
 
 # ── Main ───────────────────────────────────────────────────────────────

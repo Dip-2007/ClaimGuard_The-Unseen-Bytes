@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { ChangeEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -25,6 +25,7 @@ interface AIChatPanelProps {
   context?: string;
   parsedContext?: string;
   onBack?: () => void;
+  getAuthHeaders: () => Record<string, string>;
 }
 
 type FolderType = 'All Chats' | 'Bookmarked' | 'With Attachments';
@@ -90,7 +91,7 @@ const renderMessageContent = (content: string) => {
   );
 };
 
-export default function AIChatPanel({ context: globalContext, parsedContext, onBack }: AIChatPanelProps) {
+export default function AIChatPanel({ context: globalContext, parsedContext, onBack, getAuthHeaders }: AIChatPanelProps) {
   const [isLight, setIsLight] = useState(document.documentElement.getAttribute('data-theme') === 'light');
   useEffect(() => {
     const check = () => setIsLight(document.documentElement.getAttribute('data-theme') === 'light');
@@ -160,6 +161,43 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  const fetchSessionsFromBackend = useCallback(async () => {
+    const headers = getAuthHeaders();
+    if (!headers.Authorization) return;
+
+    try {
+      const res = await fetch('/api/user/chats', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        const mappedSessions: ChatSession[] = data.sessions.map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          messages: s.messages,
+          updatedAt: new Date(s.updated_at).getTime(),
+          filterTag: s.filter_tag,
+          attachedFileName: s.attached_file_name,
+        }));
+        
+        setSessions(prev => {
+          // Merge logic: prefer backend but keep local-only sessions if any
+          const combined = [...mappedSessions];
+          prev.forEach(p => {
+            if (!combined.some(c => c.id === p.id)) {
+              combined.push(p);
+            }
+          });
+          return combined.sort((a, b) => b.updatedAt - a.updatedAt);
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch sessions from backend", err);
+    }
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    fetchSessionsFromBackend();
+  }, [fetchSessionsFromBackend]);
+
   const activeSession = sessions.find(s => s.id === activeSessionId);
 
   const createNewChat = () => {
@@ -216,7 +254,10 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
       try {
         const res = await fetch('/api/export', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          },
           body: JSON.stringify({ raw_content: content, format: 'json' })
         });
         if (res.ok) {
@@ -291,7 +332,10 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
         body: JSON.stringify({
           message: fullText,
           context: effectiveContext || null,
@@ -307,7 +351,34 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
       setMessages(finaleMessages);
 
       setSessions(prev => {
-        return prev.map(s => s.id === currentId ? { ...s, messages: finaleMessages, updatedAt: Date.now() } : s).sort((a, b) => b.updatedAt - a.updatedAt);
+        const updated = prev.map(s => s.id === currentId ? { ...s, messages: finaleMessages, updatedAt: Date.now() } : s).sort((a, b) => b.updatedAt - a.updatedAt);
+        
+        // Sync to backend if authenticated
+        const headers = getAuthHeaders();
+        if (headers.Authorization) {
+          const sessionToSync = updated.find(s => s.id === currentId);
+          if (sessionToSync) {
+            fetch('/api/user/chats', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...headers },
+              body: JSON.stringify({
+                session_id: sessionToSync.id.length > 20 ? undefined : sessionToSync.id, // Only send ID if it seems like a MongoDB ID, or omit for new
+                title: sessionToSync.title,
+                messages: sessionToSync.messages,
+                filter_tag: sessionToSync.filterTag,
+                attached_file_name: sessionToSync.attachedFileName,
+              })
+            }).then(r => r.json()).then(data => {
+              if (data.success && data.id && data.id !== currentId) {
+                // Update local ID if backend assigned one
+                setSessions(curr => curr.map(s => s.id === currentId ? { ...s, id: data.id } : s));
+                setActiveSessionId(data.id);
+              }
+            });
+          }
+        }
+        
+        return updated;
       });
 
     } catch (err: any) {
