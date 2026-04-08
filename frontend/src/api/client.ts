@@ -6,9 +6,21 @@ const BASE_URL = import.meta.env.VITE_BACKEND_URL || '/api';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('claimguard_token');
-  const headers: Record<string, string> = {
-    ...(options?.headers || {}),
-  };
+  const headers: Record<string, string> = {};
+
+  if (options?.headers) {
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+    } else if (Array.isArray(options.headers)) {
+      options.headers.forEach(([key, value]) => {
+        headers[key] = value;
+      });
+    } else {
+      Object.assign(headers, options.headers);
+    }
+  }
 
   // Add auth header for non-auth endpoints
   if (token && !url.startsWith('/auth/')) {

@@ -4,7 +4,7 @@ import {
   History, FileText, MessageSquare, ExternalLink, Calendar,
   Lock, BarChart3, AlertTriangle,
   CheckCircle2, Clock, RefreshCw, Shield, Activity,
-  ArrowUpRight, Eye, Wrench, Download, FileDown, PieChart,
+  ArrowUpRight, Eye, Wrench, Download, PieChart,
 } from 'lucide-react';
 
 interface ActivityItem {

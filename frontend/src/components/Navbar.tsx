@@ -43,7 +43,7 @@ export default function Navbar({ activeTab, onTabChange, hasResults, hasFixedFil
     '0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05)'
   ]);
 
-  const [scrolled, _setScrolled] = useState(false);
+  const [, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -73,7 +73,7 @@ export default function Navbar({ activeTab, onTabChange, hasResults, hasFixedFil
   const availableItems = navItems.filter(i => i.available);
 
   useEffect(() => {
-    const handleScroll = () => _setScrolled(window.scrollY > 20);
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
