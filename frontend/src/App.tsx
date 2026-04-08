@@ -12,8 +12,7 @@ import TrendingSection from './components/TrendingSection';
 import AuthScreen from './components/AuthScreen';
 import HistoryDashboard from './components/HistoryDashboard';
 
-// src/config.ts (optional, but keeps things tidy)
-export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, '') ?? '';
+import { BASE_URL } from './api/client';
 
 
 type TabId = 'upload' | 'results' | 'chat' | 'history';
@@ -108,7 +107,7 @@ export default function App() {
     let enr = null;
     if (data.transaction_type === '835' && data.parse_result?.raw_content) {
       try {
-        const res = await fetch('/api/remittance-summary', {
+        const res = await fetch(BASE_URL + '/remittance-summary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({ raw_content: data.parse_result.raw_content }),
@@ -118,7 +117,7 @@ export default function App() {
     }
     if (data.transaction_type === '834' && data.parse_result?.raw_content) {
       try {
-        const res = await fetch('/api/enrollment-summary', {
+        const res = await fetch(BASE_URL + '/enrollment-summary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({ raw_content: data.parse_result.raw_content }),
@@ -207,7 +206,7 @@ export default function App() {
       if (!rawContent) return;
       console.log('[handleFix] Sending fix:', { errorId, fixValue, lineNumber, elementIndex, rawContentLength: rawContent.length });
       try {
-        const res = await fetch('/api/fix', {
+        const res = await fetch(BASE_URL + '/fix', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -222,8 +221,8 @@ export default function App() {
           }),
         });
         const data = await res.json();
-        console.log('[handleFix] Response:', { 
-          hasCorrection: !!data.corrected_content, 
+        console.log('[handleFix] Response:', {
+          hasCorrection: !!data.corrected_content,
           contentChanged: data.corrected_content !== rawContent,
           message: data.message,
           newErrors: data.validation_result?.error_count,
@@ -245,7 +244,7 @@ export default function App() {
 
           // Auto-sync corrected content to MongoDB cloud
           if (activeActivityId) {
-            fetch(`/api/save-progress/${activeActivityId}`, {
+            fetch(BASE_URL + `/save-progress/${activeActivityId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
               body: JSON.stringify({
@@ -267,7 +266,7 @@ export default function App() {
   const handleFixAll = useCallback(async () => {
     if (!rawContent) return;
     try {
-      const res = await fetch('/api/fix-all', {
+      const res = await fetch(BASE_URL + '/fix-all', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -290,19 +289,19 @@ export default function App() {
             : prev
         );
 
-          // Auto-sync corrected content to MongoDB cloud
-          if (activeActivityId) {
-            fetch(`/api/save-progress/${activeActivityId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-              body: JSON.stringify({
-                raw_content: data.corrected_content,
-                error_count: data.validation_result?.error_count || 0,
-                warning_count: data.validation_result?.warning_count || 0,
-                description: `File: ${parseData?.parse_result?.file_name || 'file.edi'} — ${data.validation_result?.error_count || 0} errors, ${data.validation_result?.warning_count || 0} warnings`,
-              }),
-            }).catch(err => console.error('Cloud sync error:', err));
-          }
+        // Auto-sync corrected content to MongoDB cloud
+        if (activeActivityId) {
+          fetch(BASE_URL + `/save-progress/${activeActivityId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({
+              raw_content: data.corrected_content,
+              error_count: data.validation_result?.error_count || 0,
+              warning_count: data.validation_result?.warning_count || 0,
+              description: `File: ${parseData?.parse_result?.file_name || 'file.edi'} — ${data.validation_result?.error_count || 0} errors, ${data.validation_result?.warning_count || 0} warnings`,
+            }),
+          }).catch(err => console.error('Cloud sync error:', err));
+        }
       }
     } catch (err) {
       console.error('Fix all error:', err);
@@ -312,7 +311,7 @@ export default function App() {
   const handleRawEdit = useCallback(async (newRawContent: string) => {
     if (!newRawContent) return;
     try {
-      const res = await fetch('/api/validate-raw', {
+      const res = await fetch(BASE_URL + '/validate-raw', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -348,7 +347,7 @@ export default function App() {
         const exportFormat = isOriginal ? 'edi' : format;
         const targetContent = isOriginal ? initialRawContent : rawContent;
 
-        const res = await fetch('/api/export', {
+        const res = await fetch(BASE_URL + '/export', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -391,7 +390,7 @@ export default function App() {
       const formData = new FormData();
       formData.append('file', blob, parseData.file_name || 'saved_progress.edi');
 
-      const res = await fetch('/api/upload', {
+      const res = await fetch(BASE_URL + '/upload', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: formData,
@@ -487,7 +486,7 @@ export default function App() {
                     let fileText = '';
                     // Always fetch from cloud via authenticated endpoint
                     try {
-                      const fileRes = await fetch(`/api/download-activity/${activityId}`, {
+                      const fileRes = await fetch(BASE_URL + `/download-activity/${activityId}`, {
                         headers: getAuthHeaders()
                       });
                       if (fileRes.ok) fileText = await fileRes.text();
@@ -503,7 +502,7 @@ export default function App() {
                         const formData = new FormData();
                         formData.append('file', blob, metadata.file_name || 'resume.edi');
 
-                        const parseRes = await fetch('/api/upload', {
+                        const parseRes = await fetch(BASE_URL + '/upload', {
                           method: 'POST',
                           headers: getAuthHeaders(),
                           body: formData,
@@ -532,7 +531,7 @@ export default function App() {
                     let fileText = '';
                     // Always fetch from cloud via authenticated endpoint
                     try {
-                      const fileRes = await fetch(`/api/download-activity/${activityId}`, {
+                      const fileRes = await fetch(BASE_URL + `/download-activity/${activityId}`, {
                         headers: getAuthHeaders()
                       });
                       if (fileRes.ok) fileText = await fileRes.text();
@@ -547,7 +546,7 @@ export default function App() {
                         const formData = new FormData();
                         formData.append('file', blob, metadata.file_name || 'file.edi');
 
-                        const parseRes = await fetch('/api/upload', {
+                        const parseRes = await fetch(BASE_URL + '/upload', {
                           method: 'POST',
                           headers: getAuthHeaders(),
                           body: formData,
@@ -599,7 +598,7 @@ export default function App() {
                         display: 'flex', alignItems: 'center', gap: 6,
                       }}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
                       Prev
                     </button>
 
@@ -637,7 +636,7 @@ export default function App() {
                       }}
                     >
                       Next
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                     </button>
                   </div>
                 )}
@@ -682,11 +681,10 @@ export default function App() {
                       initial={{ opacity: 0, y: -20, scale: 0.9 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -20, scale: 0.9 }}
-                      className={`absolute top-24 right-8 px-4 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-3 border backdrop-blur-md ${
-                        saveMessage.type === 'success' 
-                          ? 'bg-green-500/10 border-green-500/30 text-green-400' 
-                          : 'bg-red-500/10 border-red-500/30 text-red-400'
-                      }`}
+                      className={`absolute top-24 right-8 px-4 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-3 border backdrop-blur-md ${saveMessage.type === 'success'
+                        ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                        : 'bg-red-500/10 border-red-500/30 text-red-400'
+                        }`}
                     >
                       {saveMessage.type === 'success' ? (
                         <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>

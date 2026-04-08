@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { BASE_URL } from '../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   History, FileText, MessageSquare, ExternalLink, Calendar,
@@ -296,7 +297,7 @@ function ActivityCard({ activity, index, onViewResult, onContinueFixing, onDownl
               <>
                 <span style={{ color: '#4ade80', fontWeight: 600 }}>0 Errors</span>
                 <span style={{ color: 'var(--muted)' }}>•</span>
-                <span style={{ color: '#4ade80', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Valid</span>
+                <span style={{ color: '#4ade80', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12} /> Valid</span>
               </>
             )}
           </div>
@@ -314,47 +315,47 @@ function ActivityCard({ activity, index, onViewResult, onContinueFixing, onDownl
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {status === 'needs_fixing' && onContinueFixing && (
-             <ActionButton
-               onClick={() => onContinueFixing(activity.id, activity.metadata)}
-               icon={<ArrowUpRight size={14} />}
-               label="Continue Fixing"
-               color="#ef4444"
-               primary
-             />
+            <ActionButton
+              onClick={() => onContinueFixing(activity.id, activity.metadata)}
+              icon={<ArrowUpRight size={14} />}
+              label="Continue Fixing"
+              color="#ef4444"
+              primary
+            />
           )}
 
           {status === 'clean' && onViewResult && (
-             <ActionButton
-               onClick={() => onViewResult(activity.id, activity.metadata)}
-               icon={<BarChart3 size={14} />}
-               label="View Analytics"
-               color="#4ade80"
-               primary
-             />
+            <ActionButton
+              onClick={() => onViewResult(activity.id, activity.metadata)}
+              icon={<BarChart3 size={14} />}
+              label="View Analytics"
+              color="#4ade80"
+              primary
+            />
           )}
 
           {status === 'chat' && (
-             <ActionButton
-               onClick={() => {}}
-               icon={<Eye size={14} />}
-               label="View Conversation"
-               color="#54d0ff"
-               primary
-             />
+            <ActionButton
+              onClick={() => { }}
+              icon={<Eye size={14} />}
+              label="View Conversation"
+              color="#54d0ff"
+              primary
+            />
           )}
 
           {isUpload && (
-             <ActionLink
-               href={activity.metadata?.cloudinary_url || '#'}
-               onClick={activity.metadata?.cloudinary_url ? undefined : (e) => {
-                 e.preventDefault();
-                 if (onDownload) {
-                   onDownload(activity.id, activity.metadata?.file_name || 'download.edi');
-                 }
-               }}
-               icon={<Download size={14} />}
-               label="Download EDI"
-             />
+            <ActionLink
+              href={activity.metadata?.cloudinary_url || '#'}
+              onClick={activity.metadata?.cloudinary_url ? undefined : (e) => {
+                e.preventDefault();
+                if (onDownload) {
+                  onDownload(activity.id, activity.metadata?.file_name || 'download.edi');
+                }
+              }}
+              icon={<Download size={14} />}
+              label="Download EDI"
+            />
           )}
         </div>
       </div>
@@ -428,7 +429,7 @@ export default function HistoryDashboard({ getAuthHeaders, onViewResult, onConti
     if (isGuest) { setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await fetch('/api/history', { headers: getAuthHeaders() });
+      const res = await fetch(BASE_URL + '/history', { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch history');
       const data = await res.json();
       setActivities(data.activities);
@@ -441,7 +442,7 @@ export default function HistoryDashboard({ getAuthHeaders, onViewResult, onConti
 
   const handleDownload = useCallback(async (activityId: string, filename: string) => {
     try {
-      const res = await fetch(`/api/download-activity/${activityId}`, {
+      const res = await fetch(BASE_URL + `/download-activity/${activityId}`, {
         headers: getAuthHeaders()
       });
       if (!res.ok) {

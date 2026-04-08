@@ -2,7 +2,10 @@
  * API Client — wraps all backend endpoint calls.
  */
 
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || '/api';
+export const BACKEND_DOMAIN = import.meta.env.VITE_BACKEND_URL || '';
+export const BASE_URL = BACKEND_DOMAIN.endsWith('/')
+  ? BACKEND_DOMAIN.slice(0, -1) + '/api'
+  : BACKEND_DOMAIN + '/api';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('claimguard_token');

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { BASE_URL } from '../api/client';
 import type { ChangeEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -76,7 +77,7 @@ const renderMessageContent = (content: string) => {
                   onClick={() => navigator.clipboard.writeText(codeText)}
                   title="Copy Code"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" ry="1" /></svg>
                 </button>
                 <pre className="font-mono text-[13px] text-slate-300 overflow-x-auto whitespace-pre-wrap leading-relaxed">{codeText}</pre>
               </div>
@@ -110,8 +111,8 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
 
   const [activeFolder, setActiveFolder] = useState<FolderType>('All Chats');
   const [activeFilterTag, setActiveFilterTag] = useState('All');
-  
-  const [localAttachment, setLocalAttachment] = useState<{name: string, content: string} | null>(null);
+
+  const [localAttachment, setLocalAttachment] = useState<{ name: string, content: string } | null>(null);
   const [localParsedContext, setLocalParsedContext] = useState<string | null>(null);
   const [isViewingContext, setIsViewingContext] = useState(false);
   const [contextViewType, setContextViewType] = useState<'raw' | 'json'>('raw');
@@ -166,7 +167,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
     if (!headers.Authorization) return;
 
     try {
-      const res = await fetch('/api/user/chats', { headers });
+      const res = await fetch(BASE_URL + '/user/chats', { headers });
       if (res.ok) {
         const data = await res.json();
         const mappedSessions: ChatSession[] = data.sessions.map((s: any) => ({
@@ -177,7 +178,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
           filterTag: s.filter_tag,
           attachedFileName: s.attached_file_name,
         }));
-        
+
         setSessions(prev => {
           // Merge logic: prefer backend but keep local-only sessions if any
           const combined = [...mappedSessions];
@@ -213,7 +214,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
     setActiveSessionId(id);
     const sess = sessions.find(s => s.id === id);
     if (sess) {
-       setMessages(sess.messages);
+      setMessages(sess.messages);
     }
   };
 
@@ -249,12 +250,12 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
     reader.onload = async (event) => {
       const content = event.target?.result as string;
       setLocalAttachment({ name: file.name, content });
-      
+
       // Attempt to parse it locally
       try {
-        const res = await fetch('/api/export', {
+        const res = await fetch(BASE_URL + '/export', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             ...getAuthHeaders()
           },
@@ -267,13 +268,13 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
       } catch (err) {
         console.error("Failed to parse local attachment", err);
       }
-      
+
       if (activeSessionId) {
         setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, attachedFileName: file.name, attachedContext: content } : s));
       }
     };
     reader.readAsText(file);
-    
+
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -294,7 +295,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
 
     const userMsg: ChatMessage = { role: 'user', content: fullText };
     const updatedMessages = [...messages, userMsg];
-    
+
     setMessages(updatedMessages);
     setInput('');
     setLoading(true);
@@ -313,10 +314,10 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
       if (isNewSession) {
         let title = textToSend.trim();
         if (title.length > 25) title = title.substring(0, 25) + "...";
-        nextState = [{ 
-          id: currentId as string, 
-          title, 
-          messages: updatedMessages, 
+        nextState = [{
+          id: currentId as string,
+          title,
+          messages: updatedMessages,
           updatedAt: Date.now(),
           attachedFileName: localAttachment?.name,
           attachedContext: localAttachment?.content,
@@ -330,9 +331,9 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
     });
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(BASE_URL + '/chat', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders()
         },
@@ -347,18 +348,18 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
       const replyContent = data.reply || data.error || 'No response received.';
       const astMsg: ChatMessage = { role: 'assistant', content: replyContent };
       const finaleMessages = [...updatedMessages, astMsg];
-      
+
       setMessages(finaleMessages);
 
       setSessions(prev => {
         const updated = prev.map(s => s.id === currentId ? { ...s, messages: finaleMessages, updatedAt: Date.now() } : s).sort((a, b) => b.updatedAt - a.updatedAt);
-        
+
         // Sync to backend if authenticated
         const headers = getAuthHeaders();
         if (headers.Authorization) {
           const sessionToSync = updated.find(s => s.id === currentId);
           if (sessionToSync) {
-            fetch('/api/user/chats', {
+            fetch(BASE_URL + '/user/chats', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', ...headers },
               body: JSON.stringify({
@@ -377,14 +378,14 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
             });
           }
         }
-        
+
         return updated;
       });
 
     } catch (err: any) {
       const errMsg: ChatMessage = { role: 'assistant', content: `Error: ${err.message}` };
       const finaleMessages = [...updatedMessages, errMsg];
-      
+
       setMessages(finaleMessages);
       setSessions(prev => {
         return prev.map(s => s.id === currentId ? { ...s, messages: finaleMessages, updatedAt: Date.now() } : s);
@@ -412,30 +413,30 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
 
   const chatCards: BentoCardProps[] = [
     {
-       title: "Segment Analysis",
-       description: "Understand complex X12 structural loops and elements.",
-       onClick: () => sendMessage("Explain the ST, GS, and ISA segments format")
+      title: "Segment Analysis",
+      description: "Understand complex X12 structural loops and elements.",
+      onClick: () => sendMessage("Explain the ST, GS, and ISA segments format")
     },
     {
-       title: "Denial Mitigation",
-       description: "Analyze remittance advice against standard CARC/RARC codes.",
-       onClick: () => sendMessage("Decode CARC code 45 and explain it")
+      title: "Denial Mitigation",
+      description: "Analyze remittance advice against standard CARC/RARC codes.",
+      onClick: () => sendMessage("Decode CARC code 45 and explain it")
     },
     {
-       title: "Remediation Guide",
-       description: "Get step-by-step suggestions to fix incorrect EDI payloads.",
-       onClick: () => sendMessage("How do I fix a missing NM109 segment?")
+      title: "Remediation Guide",
+      description: "Get step-by-step suggestions to fix incorrect EDI payloads.",
+      onClick: () => sendMessage("How do I fix a missing NM109 segment?")
     }
   ];
 
   return (
     <div className={`flex h-[100dvh] w-full ${isLight ? 'bg-[#f3f2ef] text-[#191919]' : 'bg-[#050907] text-slate-200'} font-sans fixed inset-0 z-50`}>
-      
-      <input 
-        type="file" 
+
+      <input
+        type="file"
         accept=".txt,.edi,.csv,.json"
-        ref={fileInputRef} 
-        className="hidden" 
+        ref={fileInputRef}
+        className="hidden"
         onChange={handleFileUpload}
       />
 
@@ -456,7 +457,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`w-full ${isLight ? 'bg-[#f3f2ef]' : 'bg-[#2a2a2a]'} text-sm ${isLight ? 'text-[#1a1a2e]' : 'text-slate-300'} rounded-xl py-2 pl-10 pr-4 outline-none focus:ring-1 focus:ring-[#4ade80]`}
           />
-          <svg className="absolute left-7 top-2.5 text-slate-400 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <svg className="absolute left-7 top-2.5 text-slate-400 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-6 scrollbar-hide px-2">
@@ -467,14 +468,14 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
             </div>
             <div className="space-y-[1px]">
               {(['All Chats', 'Bookmarked', 'With Attachments'] as FolderType[]).map(folder => (
-                <div 
-                  key={folder} 
+                <div
+                  key={folder}
                   onClick={() => setActiveFolder(folder)}
                   className={`group flex items-center justify-between px-4 py-2.5 rounded-r-lg cursor-pointer text-[14px] transition border-l-[3px] ${activeFolder === folder ? `${isLight ? 'bg-[#e8f0ea]' : 'bg-[#1a2e22]'} border-[#4ade80] text-[#4ade80] font-medium` : `border-transparent ${isLight ? 'hover:bg-[#f3f2ef]' : 'hover:bg-[#202020]'} ${isLight ? 'text-[#666666]' : 'text-slate-300'}`}`}
                 >
                   <div className="flex items-center gap-3">
                     <svg className={`w-[18px] h-[18px] ${activeFolder === folder ? 'text-[#4ade80]' : 'text-slate-500 group-hover:text-slate-400'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      {folder === 'Bookmarked' ? <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/> : folder === 'With Attachments' ? <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/> : <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>}
+                      {folder === 'Bookmarked' ? <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /> : folder === 'With Attachments' ? <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /> : <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />}
                     </svg>
                     <span className="truncate max-w-[150px]">{folder}</span>
                   </div>
@@ -489,35 +490,35 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
             <div className="text-[11px] font-bold text-slate-500 mb-2 mt-2 flex justify-between items-center px-4">
               {searchQuery ? 'Search Results' : activeFolder}
             </div>
-            
+
             {filteredSessions.length === 0 ? (
               <div className="px-4 py-2 text-xs text-slate-500 italic">No chats found.</div>
             ) : (
               <div className="space-y-[1px]">
                 {filteredSessions.map((chat) => (
-                  <div 
-                    key={chat.id} 
+                  <div
+                    key={chat.id}
                     onClick={() => selectChat(chat.id)}
                     className={`group flex flex-col px-4 py-2.5 rounded-r-lg cursor-pointer relative transition-colors border-l-[3px] ${activeSessionId === chat.id ? `${isLight ? 'bg-[#e8f0ea]' : 'bg-[#1a2e22]'} border-[#4ade80]` : `border-transparent ${isLight ? 'hover:bg-[#f3f2ef]' : 'hover:bg-[#202020]'}`}`}
                   >
                     <div className="flex items-center gap-3 text-[14px] text-slate-300">
-                      <svg className={`w-[18px] h-[18px] shrink-0 ${activeSessionId === chat.id ? 'text-[#4ade80]' : 'text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      <svg className={`w-[18px] h-[18px] shrink-0 ${activeSessionId === chat.id ? 'text-[#4ade80]' : 'text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
                       <span className={`truncate w-[140px] ${activeSessionId === chat.id ? 'font-medium text-[#4ade80]' : ''}`}>{chat.title}</span>
                       {chat.isBookmarked && (
-                        <svg className="w-3.5 h-3.5 text-[#4ade80] ml-auto shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                        <svg className="w-3.5 h-3.5 text-[#4ade80] ml-auto shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
                       )}
                     </div>
-                    
+
                     {(chat.filterTag && chat.filterTag !== 'All') && (
                       <div className="text-[10px] text-[#4ade80]/70 truncate mt-1 pl-[30px] opacity-80 group-hover:opacity-100">Tag: {chat.filterTag}</div>
                     )}
 
-                    <button 
+                    <button
                       onClick={(e) => deleteChat(e, chat.id)}
                       className="absolute right-4 top-2.5 text-slate-600 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition"
                       title="Delete chat"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
                     </button>
                   </div>
                 ))}
@@ -526,20 +527,20 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
           </div>
         </div>
 
-        <button 
+        <button
           onClick={createNewChat}
           className={`mt-4 mx-4 bg-[#4ade80] hover:bg-[#3dcc73] ${isLight ? 'text-white' : 'text-[#0a1a10]'} font-semibold py-3.5 px-4 rounded-[14px] flex items-center justify-between transition shadow-lg shadow-[#4ade80]/10`}
         >
           <span className="text-sm">New chat</span>
           <div className="bg-white/30 rounded text-black flex items-center justify-center w-5 h-5">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 5v14M5 12h14" /></svg>
           </div>
         </button>
       </div>
 
       {/* Main Container Area - No background gradient! purely dark as requested */}
       <div className={`flex-1 flex flex-col relative ${isLight ? 'bg-white' : 'bg-[#121212]'} m-3 ml-0 rounded-[24px]`}>
-        
+
         {/* Top header with active functional buttons */}
         <div className="h-16 flex items-center px-10 z-10 w-full pt-6 justify-between">
           <div className="flex items-center gap-4">
@@ -548,38 +549,38 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
               Workspace
             </button>
             <div className="px-2.5 py-1 rounded bg-[#22c55e]/10 text-[#4ade80] text-[11px] font-bold border border-[#22c55e]/20 tracking-wider flex items-center gap-2">
-              ClaimGuard AI 
+              ClaimGuard AI
               {localAttachment ? `(Attached: ${localAttachment.name})` : globalContext ? `(Workspace Linked)` : null}
             </div>
           </div>
-          
+
           {/* Functional Top Right Buttons */}
           <div className="flex items-center gap-5 text-[var(--muted)]">
             {effectiveContext && (
-               <button 
-                 onClick={() => setIsViewingContext(true)}
-                 title="View Context File"
-                 className="flex items-center gap-2 hover:text-[var(--text)] transition focus:outline-none bg-[#22c55e]/10 text-[#4ade80] px-3 py-1.5 rounded-[10px] text-xs font-semibold"
-               >
-                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                 View Context
-               </button>
+              <button
+                onClick={() => setIsViewingContext(true)}
+                title="View Context File"
+                className="flex items-center gap-2 hover:text-[var(--text)] transition focus:outline-none bg-[#22c55e]/10 text-[#4ade80] px-3 py-1.5 rounded-[10px] text-xs font-semibold"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
+                View Context
+              </button>
             )}
             {activeSessionId && (
               <>
-                <button 
+                <button
                   onClick={toggleBookmark}
                   title={activeSession?.isBookmarked ? "Remove Bookmark" : "Bookmark Chat"}
                   className={`transition focus:outline-none ${activeSession?.isBookmarked ? 'text-[#4ade80]' : 'hover:text-[var(--text)]'}`}
                 >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill={activeSession?.isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill={activeSession?.isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
                 </button>
-                <button 
+                <button
                   onClick={exportChat}
                   title="Export Chat as JSON"
                   className="hover:text-[var(--text)] transition focus:outline-none"
                 >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" /></svg>
                 </button>
               </>
             )}
@@ -588,15 +589,15 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
 
         <div className="flex-1 overflow-y-auto px-8 pb-32 pt-12 z-10 w-full max-w-4xl mx-auto flex flex-col relative custom-scrollbar">
           {messages.length === 0 ? (
-             <div className="flex-1 flex flex-col items-center justify-center -mt-10 w-full max-w-3xl mx-auto">
+            <div className="flex-1 flex flex-col items-center justify-center -mt-10 w-full max-w-3xl mx-auto">
               <div className={`w-full ${isLight ? 'bg-white border border-[#e0dfdc]' : 'bg-[#1b1c1b]/80'} backdrop-blur-3xl rounded-[28px] p-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] ${isLight ? '' : 'border border-white/5'} relative mb-4 flex flex-col`}>
-                
+
                 <div className="flex justify-center mb-6">
                   <div className="w-[42px] h-[42px] mask mask-squircle bg-[#22c55e] flex items-center justify-center text-black rounded-xl">
-                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                   </div>
                 </div>
-                
+
                 <h1 className={`text-[32px] font-medium text-center ${isLight ? 'text-[#1a1a2e]' : 'text-white'} mb-3 tracking-tight`}>How can I help you today?</h1>
                 <p className="text-center text-[#9a9a9a] mb-8 max-w-[420px] mx-auto text-[13px] leading-relaxed">
                   Upload an EDI payload or ask a general query. Set the context tab below to prefix your request parameters.
@@ -609,7 +610,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                 {/* Active Functional Filter Tabs */}
                 <div className="flex items-center justify-center gap-6 mb-5 text-[13px] font-medium text-[#777]">
                   {filterTabs.map(tab => (
-                    <span 
+                    <span
                       key={tab}
                       onClick={() => setActiveFilterTag(tab)}
                       className={`pb-1 cursor-pointer transition border-b-[2px] ${activeFilterTag === tab ? 'text-[#4ade80] border-[#4ade80]' : 'border-transparent hover:text-slate-300'}`}
@@ -622,13 +623,13 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                 {/* Clean white input bar for empty state */}
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
-                     <button 
-                       onClick={() => fileInputRef.current?.click()}
-                       className="w-8 h-8 flex items-center justify-center hover:bg-[#f0f0f0] rounded-full transition-colors text-[#666]"
-                       title="Attach File"
-                     >
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                     </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-8 h-8 flex items-center justify-center hover:bg-[#f0f0f0] rounded-full transition-colors text-[#666]"
+                      title="Attach File"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                    </button>
                   </div>
                   <input
                     type="text"
@@ -639,12 +640,12 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                     className={`w-full ${isLight ? 'bg-[#f3f2ef] text-[#1a1a2e] placeholder:text-[#999999]' : 'bg-white text-slate-800 placeholder:text-slate-400'} rounded-xl py-[14px] pl-[52px] pr-[60px] focus:outline-none shadow-lg text-[15px] font-medium`}
                   />
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    <button 
-                       onClick={() => sendMessage()}
-                       disabled={!input.trim() || loading}
-                       className="w-[34px] h-[34px] rounded-[10px] bg-[#4ade80] hover:bg-[#3dcc73] disabled:bg-[#d5ebd1] disabled:text-[#888] text-white flex items-center justify-center transition shadow-sm ml-1 focus:outline-none"
+                    <button
+                      onClick={() => sendMessage()}
+                      disabled={!input.trim() || loading}
+                      className="w-[34px] h-[34px] rounded-[10px] bg-[#4ade80] hover:bg-[#3dcc73] disabled:bg-[#d5ebd1] disabled:text-[#888] text-white flex items-center justify-center transition shadow-sm ml-1 focus:outline-none"
                     >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                     </button>
                   </div>
                 </div>
@@ -653,9 +654,9 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                 {localAttachment && (
                   <div className="absolute -bottom-8 left-0 right-0 flex justify-center">
                     <div className="flex items-center gap-2 bg-[#1b1c1b] border border-[#4ade80]/30 text-[#4ade80] text-xs px-3 py-1 rounded-full shadow-lg">
-                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
                       {localAttachment.name}
-                      <button onClick={removeAttachment} className="ml-1 hover:text-white"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                      <button onClick={removeAttachment} className="ml-1 hover:text-white"><svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
                     </div>
                   </div>
                 )}
@@ -670,19 +671,19 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                       <>
                         <span className={`font-semibold ${isLight ? 'text-[#1a1a2e]' : 'text-white'} text-[15px]`}>You</span>
                         <div className={`w-8 h-8 rounded-full ${isLight ? 'bg-[#f3f2ef] border-[#e0dfdc]' : 'bg-[#2a2a2a] border-[#333]'} flex items-center justify-center border`}>
-                          <svg className={`w-4 h-4 ${isLight ? 'text-[#666]' : 'text-slate-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                          <svg className={`w-4 h-4 ${isLight ? 'text-[#666]' : 'text-slate-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                         </div>
                       </>
                     ) : (
                       <>
                         <div className="w-8 h-8 mask mask-squircle bg-[#22c55e] flex items-center justify-center text-[#0a1f10] rounded-lg">
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                         </div>
                         <span className="font-semibold text-[#4ade80] text-[15px] tracking-wide">ClaimGuard AI</span>
                       </>
                     )}
                   </div>
-                  
+
                   <div className={`max-w-[85%] text-[15px] ${msg.role === 'user' ? `pr-12 ${isLight ? 'text-[#1a1a2e]' : 'text-white'} text-right` : `pl-12 ${isLight ? 'text-[#333]' : 'text-slate-300'} font-normal`} tracking-[0.015em] leading-[1.75]`}>
                     {renderMessageContent(msg.content)}
                   </div>
@@ -692,7 +693,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                 <div className="flex flex-col items-start w-full">
                   <div className="flex items-center gap-4 mb-2">
                     <div className="w-8 h-8 mask mask-squircle bg-[#22c55e]/30 flex items-center justify-center text-[#4ade80] rounded-lg animate-pulse">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                     </div>
                     <span className="font-semibold text-[#4ade80]/60 text-[15px] tracking-wide">ClaimGuard AI</span>
                   </div>
@@ -711,20 +712,20 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
           <div className="absolute bottom-6 left-0 right-0 w-full z-20 flex flex-col items-center px-10">
             {localAttachment && (
               <div className="mb-2 mr-auto ml-[calc(50%-1.1rem)] max-w-3xl transform -translate-x-1/2 flex items-center gap-2 bg-[#22c55e] text-[#050907] font-semibold text-xs px-4 py-1.5 rounded-t-xl shadow-lg border-b-0 w-fit">
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
                 {localAttachment.name}
-                <button onClick={removeAttachment} className="ml-1 hover:text-[#0b2413]"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                <button onClick={removeAttachment} className="ml-1 hover:text-[#0b2413]"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
               </div>
             )}
             <div className="w-full max-w-3xl relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                 <button 
-                   onClick={() => fileInputRef.current?.click()}
-                   className="w-8 h-8 flex items-center justify-center hover:bg-[#f0f0f0] rounded-md transition-colors"
-                   title="Attach File"
-                 >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                 </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-8 h-8 flex items-center justify-center hover:bg-[#f0f0f0] rounded-md transition-colors"
+                  title="Attach File"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                </button>
               </div>
               <input
                 type="text"
@@ -734,17 +735,17 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                 placeholder="Message ClaimGuard AI..."
                 className={`w-full ${isLight ? 'bg-[#f3f2ef] border border-[#e0dfdc] text-[#1a1a2e] placeholder:text-[#999999]' : 'bg-white border border-[#444] text-slate-800 placeholder:text-slate-400'} rounded-2xl py-[16px] pl-[52px] pr-16 focus:outline-none focus:border-[#4ade80] shadow-2xl text-[15px] font-medium ${localAttachment ? 'rounded-tl-none' : ''}`}
               />
-              <button 
+              <button
                 onClick={() => sendMessage()}
                 disabled={!input.trim() || loading}
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl bg-[#4ade80] hover:bg-[#3ec770] disabled:bg-[#d5ebd1] disabled:text-[#888] text-white flex items-center justify-center transition focus:outline-none"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
               </button>
             </div>
           </div>
         )}
-        
+
         <div className="absolute bottom-1 left-0 right-0 text-center text-[10px] text-[#444] font-medium z-10 select-none pb-0.5">
           ClaimGuard AI can make mistakes. Consider checking important information.
         </div>
@@ -755,10 +756,10 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
           <div className={`${isLight ? 'bg-white border-[#e0dfdc]' : 'bg-[#121212] border-[#333]'} border rounded-[24px] w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden shadow-2xl relative animate-fade-in`}>
             <div className={`h-16 border-b ${isLight ? 'border-[#e0dfdc] bg-[#f3f2ef]' : 'border-[#333] bg-[#1a1a1a]'} flex items-center justify-between px-6`}>
               <h3 className={`${isLight ? 'text-[#1a1a2e]' : 'text-white'} font-semibold flex items-center gap-2`}>
-                <svg className="w-5 h-5 text-[#4ade80]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <svg className="w-5 h-5 text-[#4ade80]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
                 {localAttachment ? localAttachment.name : "Workspace EDI Context"}
               </h3>
-              
+
               <div className="flex gap-4 items-center">
                 {(localAttachment ? localParsedContext : parsedContext) && (
                   <div className={`flex ${isLight ? 'bg-white border-[#e0dfdc]' : 'bg-[#222] border-[#333]'} p-1 rounded-lg border`}>
@@ -766,7 +767,7 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
                     <button onClick={() => setContextViewType('json')} className={`px-4 py-1.5 text-xs rounded-md transition ${contextViewType === 'json' ? 'bg-[#4ade80] text-black font-bold' : `text-[var(--muted)] hover:text-[var(--text)]`}`}>Parsed JSON</button>
                   </div>
                 )}
-                
+
                 <button onClick={() => setIsViewingContext(false)} className="text-[var(--muted)] hover:text-[var(--text)] p-2 ml-2" title="Close context viewer">
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -778,12 +779,12 @@ export default function AIChatPanel({ context: globalContext, parsedContext, onB
               </pre>
             </div>
             <div className={`h-14 border-t ${isLight ? 'border-[#e0dfdc] bg-[#f3f2ef]' : 'border-[#333] bg-[#1a1a1a]'} flex items-center justify-end px-6`}>
-               <button 
-                  onClick={() => setIsViewingContext(false)} 
-                  className={`${isLight ? 'bg-[#e0dfdc] hover:bg-[#d0cfcc] text-[#1a1a2e]' : 'bg-[#333] hover:bg-[#444] text-white'} px-5 py-2 rounded-xl text-sm font-medium transition`}
-               >
-                 Close
-               </button>
+              <button
+                onClick={() => setIsViewingContext(false)}
+                className={`${isLight ? 'bg-[#e0dfdc] hover:bg-[#d0cfcc] text-[#1a1a2e]' : 'bg-[#333] hover:bg-[#444] text-white'} px-5 py-2 rounded-xl text-sm font-medium transition`}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
