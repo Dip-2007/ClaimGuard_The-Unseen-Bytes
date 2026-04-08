@@ -28,22 +28,21 @@ interface NavbarProps {
 export default function Navbar({ activeTab, onTabChange, hasResults, hasFixedFile, onExport, user, onLogout }: NavbarProps) {
   const { scrollY } = useScroll();
   const smoothScrollY = useSpring(scrollY, { stiffness: 60, damping: 22, restDelta: 0.001 });
-  
+
   const navMaxWidth = useTransform(smoothScrollY, [0, 150], ["1400px", "1000px"]);
   const navBackdrop = useTransform(smoothScrollY, [0, 150], ['blur(16px)', 'blur(32px)']);
 
   const navBackgroundDark = useTransform(smoothScrollY, [0, 150], ['rgba(15, 15, 18, 0.35)', 'rgba(10, 10, 14, 0.65)']);
   const navBackgroundLight = useTransform(smoothScrollY, [0, 150], ['rgba(255, 255, 255, 0.92)', 'rgba(255, 255, 255, 0.98)']);
   const navBoxShadowDark = useTransform(smoothScrollY, [0, 150], [
-    '0 8px 32px 0 rgba(0, 0, 0, 0.25), inset 0 1px 1px 0 rgba(255, 255, 255, 0.05)', 
+    '0 8px 32px 0 rgba(0, 0, 0, 0.25), inset 0 1px 1px 0 rgba(255, 255, 255, 0.05)',
     '0 12px 48px 0 rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.1)'
   ]);
   const navBoxShadowLight = useTransform(smoothScrollY, [0, 150], [
-    '0 0 0 1px rgba(0, 0, 0, 0.08)', 
+    '0 0 0 1px rgba(0, 0, 0, 0.08)',
     '0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05)'
   ]);
 
-  const [, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -73,7 +72,9 @@ export default function Navbar({ activeTab, onTabChange, hasResults, hasFixedFil
   const availableItems = navItems.filter(i => i.available);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => {
+      // Logic for scroll effects can go here if needed
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -207,14 +208,14 @@ export default function Navbar({ activeTab, onTabChange, hasResults, hasFixedFil
           />
           <path
             d="M0 20 Q0 0 20 0 L155 0 Q170 0 175 14 Q185 40 200 40 Q215 40 225 14 Q230 0 245 0 L380 0 Q400 0 400 20 L400 80 L0 80 Z"
-            fill="none" 
-            stroke="rgba(255, 255, 255, 0.08)" 
+            fill="none"
+            stroke="rgba(255, 255, 255, 0.08)"
             strokeWidth="0.5"
           />
         </svg>
 
         <div style={{
-          position: 'absolute', inset: 0, 
+          position: 'absolute', inset: 0,
           backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
           zIndex: -1, pointerEvents: 'none',
         }} />

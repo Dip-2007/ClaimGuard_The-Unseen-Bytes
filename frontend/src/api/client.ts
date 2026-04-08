@@ -18,7 +18,9 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
         headers[key] = value;
       });
     } else {
-      Object.assign(headers, options.headers);
+      Object.entries(options.headers).forEach(([key, value]) => {
+        headers[key] = value as string;
+      });
     }
   }
 
