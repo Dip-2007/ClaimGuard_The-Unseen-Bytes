@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { registerUser, loginUser } from '../api/client';
 
 interface AuthScreenProps {
   onAuth: (token: string, user: { id: string; name: string; email: string }) => void;
@@ -28,23 +29,10 @@ export default function AuthScreen({ onAuth, onGuest }: AuthScreenProps) {
     setError(null);
     setLoading(true);
 
-    const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-    const body = mode === 'register'
-      ? { name, email, password }
-      : { email, password };
-
     try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || 'Authentication failed');
-      }
+      const data = mode === 'register'
+        ? await registerUser(name, email, password)
+        : await loginUser(email, password);
 
       // Save token
       localStorage.setItem('claimguard_token', data.access_token);

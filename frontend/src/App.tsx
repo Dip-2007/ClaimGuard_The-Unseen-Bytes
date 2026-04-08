@@ -12,6 +12,10 @@ import TrendingSection from './components/TrendingSection';
 import AuthScreen from './components/AuthScreen';
 import HistoryDashboard from './components/HistoryDashboard';
 
+// src/config.ts (optional, but keeps things tidy)
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, '') ?? '';
+
+
 type TabId = 'upload' | 'results' | 'chat' | 'history';
 type SectionId = 'validation' | 'parsed' | 'summary';
 

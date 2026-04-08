@@ -2,14 +2,22 @@
  * API Client — wraps all backend endpoint calls.
  */
 
-const BASE_URL = '/api';
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || '/api';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = localStorage.getItem('claimguard_token');
+  const headers: Record<string, string> = {
+    ...(options?.headers || {}),
+  };
+
+  // Add auth header for non-auth endpoints
+  if (token && !url.startsWith('/auth/')) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${BASE_URL}${url}`, {
     ...options,
-    headers: {
-      ...(options?.headers || {}),
-    },
+    headers,
   });
 
   if (!response.ok) {
@@ -114,4 +122,26 @@ export async function getCARCCodes() {
 
 export async function getRARCCodes() {
   return request<any>('/rarc-codes');
+}
+
+// ── Authentication ───────────────────────────────────────────────────
+
+export async function registerUser(name: string, email: string, password: string) {
+  return request<any>('/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password }),
+  });
+}
+
+export async function loginUser(email: string, password: string) {
+  return request<any>('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function getUserProfile() {
+  return request<any>('/auth/me');
 }
